@@ -222,7 +222,7 @@ NODE_ENV=production
 AI_PROVIDER=gemini
 
 # Google Gemini API Key (Get free key at: https://aistudio.google.com/apikey)
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=AQ.Ab8RN6KL6vnCySziah5Ikod2_xte5ijqzHx8FAmqYQpoUbJdhA
 
 # Selected AI Model
 # For Gemini: 'gemini-3.8-flash', 'gemini-3.1-pro-preview'
@@ -232,14 +232,14 @@ AI_MODEL=gemini-3.8-flash
 # Base URL (Required for Ollama / LocalAI / OpenAI-compatible on home VM)
 # Example for Ollama on same host: http://localhost:11434/v1
 # Example for remote home VM: http://192.168.1.100:11434/v1
-AI_BASE_URL=
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 
 # ------------------------------------------------------------------------------
 # 2. SAM.GOV FEDERAL OPPORTUNITIES API (OPTIONAL)
 # ------------------------------------------------------------------------------
 # Obtain at: https://open.gsa.gov/api/get-opportunities-public-api/
 # When left empty, app operates in high-fidelity 213-record benchmark repository mode
-SAM_GOV_API_KEY=
+SAM_GOV_API_KEY=SAM-3a8174ee-9181-4352-9cc7-c2b7009aee41
 SAM_GOV_ENV=production
 `;
 
