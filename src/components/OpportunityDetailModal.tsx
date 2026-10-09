@@ -1,0 +1,1154 @@
+import React, { useState } from 'react';
+import { 
+  X, 
+  Building2, 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  FileText, 
+  Download, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Mail, 
+  Phone, 
+  ExternalLink,
+  Shield,
+  Briefcase,
+  Layers,
+  Printer,
+  Eye,
+  Check,
+  FolderDown,
+  Copy,
+  FileSpreadsheet,
+  FileCode,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  Lock,
+  Unlock,
+  RefreshCw
+} from 'lucide-react';
+import { SAMOpportunity, BusinessProfile, FitScore, OpportunityAttachment, SowResourceStrategy } from '../types/contract';
+import { calculateFitScore } from '../utils/fitEngine';
+import { getSafeSamGovUrl, isDirectSamGovNoticeId, getSamSearchUrl, extractSamNoticeUUID } from '../utils/samUrlHelper';
+import { getNaicsDefinition } from '../data/naicsDatabase';
+import { 
+  downloadAttachment, 
+  downloadCompleteRfpPackage, 
+  generateAttachmentContent 
+} from '../utils/attachmentDownloader';
+import { SowExecutionStrategyView } from './SowExecutionStrategyView';
+
+interface OpportunityDetailModalProps {
+  opportunity: SAMOpportunity | null;
+  currentProfile: BusinessProfile;
+  onClose: () => void;
+  onGeneratePlan: (opp: SAMOpportunity) => void;
+  onTogglePipeline: (opp: SAMOpportunity) => void;
+  onValidate?: (opp: SAMOpportunity) => void;
+  isInPipeline: boolean;
+}
+
+export const OpportunityDetailModal: React.FC<OpportunityDetailModalProps> = ({
+  opportunity,
+  currentProfile,
+  onClose,
+  onGeneratePlan,
+  onTogglePipeline,
+  onValidate,
+  isInPipeline,
+}) => {
+  const [previewAttachment, setPreviewAttachment] = useState<OpportunityAttachment | null>(null);
+  const [downloadedIds, setDownloadedIds] = useState<Record<string, boolean>>({});
+  const [downloadingPackage, setDownloadingPackage] = useState(false);
+  const [copiedPreview, setCopiedPreview] = useState(false);
+  const [copiedSolNum, setCopiedSolNum] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'sow_strategy'>('overview');
+  const [sowPlan, setSowPlan] = useState<SowResourceStrategy | null>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [previewMaximized, setPreviewMaximized] = useState(false);
+  const [copiedRequirements, setCopiedRequirements] = useState(false);
+  const [showAccessGuideModal, setShowAccessGuideModal] = useState(false);
+  const [isValidatingSam, setIsValidatingSam] = useState(false);
+  const [liveValidation, setLiveValidation] = useState<any>(null);
+
+  if (!opportunity) return null;
+
+  const fit: FitScore = calculateFitScore(opportunity, currentProfile);
+
+  const handleValidateNotice = async () => {
+    if (!opportunity) return;
+    setIsValidatingSam(true);
+    setLiveValidation(null);
+    try {
+      const res = await fetch('/api/sam/validate-solicitation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          solicitationNumber: opportunity.solicitationNumber,
+          noticeId: opportunity.noticeId,
+        }),
+      });
+      const data = await res.json();
+      setLiveValidation(data);
+    } catch (e: any) {
+      setLiveValidation({
+        exists: false,
+        isValidOnLiveSam: false,
+        status: 'Connection Error',
+        message: e.message || 'Error reaching live validation service',
+      });
+    } finally {
+      setIsValidatingSam(false);
+    }
+  };
+
+  const handleCopyRequirements = () => {
+    const text = opportunity.requirementsSummary || `REQUIREMENTS & STATEMENT OF WORK SUMMARY (FOR PROPOSAL GENERATION):
+• Project Title: ${opportunity.title}
+• Solicitation Number: ${opportunity.solicitationNumber}
+• Customer Agency: ${opportunity.department} | ${opportunity.subTier}${opportunity.majorCommand ? ` | ${opportunity.majorCommand}` : ''} | ${opportunity.office}
+• Primary Industry NAICS: ${opportunity.naicsCode} (${opportunity.naicsTitle})
+• Small Business Program: ${opportunity.setAside}
+• Scope of Work:
+  ${opportunity.description}
+• Core Performance Deliverables:
+${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedRequirements(true);
+    setTimeout(() => setCopiedRequirements(false), 2500);
+  };
+
+  const handleCopySolNum = () => {
+    navigator.clipboard.writeText(opportunity.solicitationNumber);
+    setCopiedSolNum(true);
+    setTimeout(() => setCopiedSolNum(false), 2500);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadSingle = (att: OpportunityAttachment) => {
+    downloadAttachment(att, opportunity);
+    setDownloadedIds((prev) => ({ ...prev, [att.id]: true }));
+    setTimeout(() => {
+      setDownloadedIds((prev) => ({ ...prev, [att.id]: false }));
+    }, 4000);
+  };
+
+  const handleDownloadAll = () => {
+    setDownloadingPackage(true);
+    downloadCompleteRfpPackage(opportunity);
+    if (opportunity.attachments) {
+      opportunity.attachments.forEach((att) => {
+        setDownloadedIds((prev) => ({ ...prev, [att.id]: true }));
+      });
+    }
+    setTimeout(() => {
+      setDownloadingPackage(false);
+    }, 2500);
+  };
+
+  const handleCopyPreviewText = () => {
+    if (!previewAttachment) return;
+    const text = generateAttachmentContent(previewAttachment, opportunity);
+    navigator.clipboard.writeText(text);
+    setCopiedPreview(true);
+    setTimeout(() => setCopiedPreview(false), 2500);
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 overflow-y-auto bg-slate-950/75 backdrop-blur-xs flex items-center justify-center transition-all ${isMaximized ? 'p-0' : 'p-2 sm:p-4 md:p-6'}`}>
+      <div className={`bg-white border border-slate-200 shadow-2xl flex flex-col overflow-hidden transition-all duration-150 ${isMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'w-full max-w-5xl xl:max-w-6xl max-h-[94vh] sm:max-h-[92vh] rounded-2xl animate-in fade-in zoom-in-95'}`}>
+        {/* Header Bar */}
+        <div className="bg-slate-900 text-white px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopySolNum}
+              className="font-mono text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded flex items-center gap-1.5 transition cursor-pointer"
+              title="Official Solicitation Number. Click to copy for SAM.gov search"
+            >
+              <span className="text-[10px] text-blue-200 font-sans font-semibold">SOL #</span>
+              <span>{opportunity.solicitationNumber}</span>
+              {copiedSolNum ? (
+                <Check className="w-3.5 h-3.5 text-emerald-300" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-blue-200" />
+              )}
+            </button>
+
+            {onValidate && (
+              <button
+                type="button"
+                onClick={() => onValidate(opportunity)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white border border-slate-700 px-2.5 py-1 rounded flex items-center gap-1.5 font-semibold transition cursor-pointer"
+                title="Open SAM.gov Contract ID & Validation Inspector"
+              >
+                <span>ID Validation Guide</span>
+              </button>
+            )}
+
+            {(() => {
+              const topDirectUUID = extractSamNoticeUUID(opportunity);
+              if (topDirectUUID) {
+                return (
+                  <a
+                    href={`https://sam.gov/opp/${topDirectUUID}/view`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1 rounded flex items-center gap-1.5 font-bold transition shadow-xs"
+                    title="Direct link to official notice on SAM.gov"
+                  >
+                    <span>Direct Notice on SAM.gov</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                );
+              }
+              return (
+                <a
+                  href={getSafeSamGovUrl(opportunity)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs bg-emerald-950 hover:bg-emerald-900 text-emerald-300 hover:text-emerald-200 border border-emerald-800/80 px-2.5 py-1 rounded flex items-center gap-1.5 font-semibold transition"
+                  title="Search this Solicitation Number directly on live SAM.gov portal"
+                >
+                  <span>Search on SAM.gov</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              );
+            })()}
+
+            <span className="text-xs text-slate-400 font-mono hidden lg:inline">
+              Notice ID: {opportunity.noticeId}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={handlePrint}
+              title="Print RFP Synopsis"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsMaximized(!isMaximized)}
+              title={isMaximized ? "Restore window size (Minimize to standard dialog)" : "Expand window to full screen (Maximize)"}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              {isMaximized ? <Minimize2 className="w-4 h-4 text-blue-400" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={onClose}
+              title="Close window"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Feature Sub-Navigation Tabs */}
+        <div className="bg-slate-800 border-b border-slate-700 px-6 flex items-center justify-between gap-4 overflow-x-auto">
+          <div className="flex items-center gap-1.5 py-2">
+            <button
+              type="button"
+              onClick={() => setActiveModalTab('overview')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer ${
+                activeModalTab === 'overview'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>RFP Synopsis & Requirements</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveModalTab('sow_strategy')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer relative ${
+                activeModalTab === 'sow_strategy'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>⚡ SOW Resources & Execution Strategy</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold uppercase bg-amber-400 text-slate-950 tracking-wider">
+                AI SOW Engine
+              </span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-slate-400 hidden md:inline">
+            {activeModalTab === 'overview' ? 'Solicitation & SOW Overview' : 'Solutions, Pathways & Proposal Generator'}
+          </span>
+        </div>
+
+        {/* Scrollable Content Body */}
+        <div className="overflow-y-auto p-6 space-y-6">
+          {activeModalTab === 'sow_strategy' ? (
+            <SowExecutionStrategyView
+              opportunity={opportunity}
+              currentProfile={currentProfile}
+              initialPlan={sowPlan}
+              onPlanUpdated={setSowPlan}
+            />
+          ) : (
+            <>
+              {/* Main Title & Agency Header */}
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {/* Notice Status Badge */}
+              {opportunity.status === 'awarded' ? (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5">
+                  <span>🏆 Contract Awarded</span>
+                </span>
+              ) : opportunity.status === 'inactive' ? (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-200 text-slate-700 border border-slate-300 flex items-center gap-1.5">
+                  <span>⚪ Inactive / Closed Notice</span>
+                </span>
+              ) : (
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>🟢 Active Open Solicitation</span>
+                </span>
+              )}
+
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                {opportunity.type}
+              </span>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                {opportunity.setAside}
+              </span>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                {opportunity.contractType}
+              </span>
+            </div>
+
+            {opportunity.awardeeInfo && (
+              <div className="mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4 text-xs text-amber-950">
+                <div className="flex items-center gap-2 font-bold text-sm mb-1.5 text-amber-900">
+                  <span>🏆 Official Award Announcement</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/80 p-3 rounded-lg border border-amber-200">
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Awardee Contractor</span>
+                    <strong className="text-slate-900 text-xs">{opportunity.awardeeInfo.vendorName}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Awarded Amount</span>
+                    <strong className="text-emerald-700 text-xs font-mono">{opportunity.awardeeInfo.awardAmount}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Award Date & Contract #</span>
+                    <span className="text-slate-700 text-xs font-mono">{opportunity.awardeeInfo.awardDate} ({opportunity.awardeeInfo.contractNumber})</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug mb-2">
+              {opportunity.title}
+            </h2>
+
+            {/* Federal Organization Hierarchy Intelligence Card */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-xl p-3.5 mb-3 text-xs">
+              <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-200">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Federal Organization & Buying Command Hierarchy:</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{opportunity.placeOfPerformance.city}, {opportunity.placeOfPerformance.state}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Department / Ind. Agency</span>
+                  <span className="font-bold text-slate-900 block truncate" title={opportunity.department}>{opportunity.department}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Sub-tier Agency</span>
+                  <span className="font-semibold text-slate-800 block truncate" title={opportunity.subTier}>{opportunity.subTier}</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">Major Command / Activity</span>
+                  <span className="font-semibold text-blue-900 block truncate" title={opportunity.majorCommand || 'Standard Command Authority'}>
+                    {opportunity.majorCommand || 'Headquarters / Command Authority'}
+                  </span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 block">Contracting Office & Sub-Cmd</span>
+                  <span className="font-mono text-[11px] text-slate-700 block truncate" title={opportunity.office}>
+                    {opportunity.subCommand ? `${opportunity.subCommand} • ` : ''}{opportunity.office}
+                  </span>
+                </div>
+              </div>
+
+              {opportunity.hierarchyPath && opportunity.hierarchyPath.length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-600">Command Chain:</span>
+                  {opportunity.hierarchyPath.map((node, nIdx) => (
+                    <React.Fragment key={nIdx}>
+                      <span className="bg-white px-2 py-0.5 rounded border border-slate-200 font-medium text-slate-700">{node}</span>
+                      {nIdx < (opportunity.hierarchyPath?.length || 0) - 1 && (
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Verification & Contract ID Guide Card */}
+            {(() => {
+              const directUUID = extractSamNoticeUUID(opportunity);
+              return (
+                <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 space-y-2.5 text-xs mb-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-950">
+                        <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>SAM.gov Live Notice & Verification Hub:</span>
+                        {directUUID ? (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.2 rounded-full">
+                            ✓ Direct Notice ID Verified
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.2 rounded-full">
+                            Search Query Mode
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-blue-900/80 leading-normal">
+                        Official Solicitation Number: <strong className="font-mono text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200">{opportunity.solicitationNumber}</strong>
+                        {directUUID && (
+                          <span className="ml-2 font-mono text-[10px] text-slate-600">
+                            (Notice UUID: <code className="text-slate-900 font-bold">{directUUID}</code>)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleValidateNotice}
+                        disabled={isValidatingSam}
+                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-blue-700 border border-blue-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer disabled:opacity-60 shadow-2xs"
+                        title="Validate against live SAM.gov API in real-time"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isValidatingSam ? 'animate-spin' : ''}`} />
+                        <span>{isValidatingSam ? 'Validating...' : 'Validate on Live SAM'}</span>
+                      </button>
+
+                      {directUUID ? (
+                        <a
+                          href={`https://sam.gov/opp/${directUUID}/view`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                          title="Direct link to live official notice on SAM.gov"
+                        >
+                          <span>Direct Notice on SAM.gov</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <a
+                          href={getSafeSamGovUrl(opportunity)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                          title="Search official solicitation on SAM.gov"
+                        >
+                          <span>Search on SAM.gov</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+
+                      <a
+                        href={getSamSearchUrl(opportunity.solicitationNumber)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 text-slate-500 hover:text-blue-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition"
+                        title="Search specifically by solicitation number on SAM.gov search portal"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Real-time Live Validation Result Strip */}
+                  {liveValidation && (
+                    <div className={`p-2.5 rounded-lg border text-[11px] flex items-start justify-between gap-2 animate-in fade-in duration-150 ${
+                      liveValidation.exists 
+                        ? 'bg-emerald-50/90 text-emerald-950 border-emerald-300' 
+                        : 'bg-amber-50/90 text-amber-950 border-amber-300'
+                    }`}>
+                      <div className="space-y-0.5">
+                        <div className="font-bold flex items-center gap-1.5">
+                          {liveValidation.exists ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          )}
+                          <span>{liveValidation.status}: {liveValidation.message}</span>
+                        </div>
+                        {liveValidation.officialNoticeId && (
+                          <div className="text-[10px] text-slate-600 font-mono">
+                            Official Notice ID: <strong>{liveValidation.officialNoticeId}</strong>
+                            {liveValidation.postedDate && <span> • Posted: {liveValidation.postedDate}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {liveValidation.directUrl && (
+                          <a
+                            href={liveValidation.directUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-[10px] font-bold inline-flex items-center gap-1"
+                          >
+                            <span>Open Direct Link</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setLiveValidation(null)}
+                          className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Fit Score & Compatibility Analysis Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <h4 className="text-sm font-bold text-slate-900">
+                  SBA Match Analysis for {currentProfile.companyName}
+                </h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Fit Score:</span>
+                <span className="font-mono text-sm font-bold px-2.5 py-0.5 rounded-full bg-blue-600 text-white">
+                  {fit.overallScore}%
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div>
+                <p className="font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Competitive Strengths:</span>
+                </p>
+                <ul className="space-y-1 text-slate-600">
+                  {fit.matchHighlights.map((hl, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-emerald-500 font-bold">•</span>
+                      <span>{hl}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {fit.riskWarnings.length > 0 && (
+                <div>
+                  <p className="font-semibold text-amber-800 mb-1.5 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Risk Factors & Qualification Gaps:</span>
+                  </p>
+                  <ul className="space-y-1 text-slate-600">
+                    {fit.riskWarnings.map((rw, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-amber-500 font-bold">•</span>
+                        <span>{rw}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Key Procurement Details Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 bg-white rounded-lg border border-slate-200">
+              <span className="text-slate-500 font-medium block">Estimated Ceiling</span>
+              <span className="font-bold text-slate-900 text-sm">{opportunity.estimatedValue}</span>
+            </div>
+            <div className="p-3 bg-white rounded-lg border border-slate-200">
+              <span className="text-slate-500 font-medium block">Response Due Date</span>
+              <span className="font-bold text-red-600 text-sm">
+                {new Date(opportunity.responseDeadLine).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="p-3 bg-white rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium block">NAICS Code</span>
+                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                  SBA.gov
+                </span>
+              </div>
+              <span className="font-bold font-mono text-slate-900 text-sm">{opportunity.naicsCode}</span>
+              <span className="text-[10px] text-slate-800 font-semibold truncate block" title={getNaicsDefinition(opportunity.naicsCode).sbaTitle}>
+                {getNaicsDefinition(opportunity.naicsCode).sbaTitle}
+              </span>
+              {getNaicsDefinition(opportunity.naicsCode).censusTitle !== getNaicsDefinition(opportunity.naicsCode).sbaTitle && (
+                <span className="text-[9px] text-slate-400 truncate block">
+                  Census: {getNaicsDefinition(opportunity.naicsCode).censusTitle}
+                </span>
+              )}
+            </div>
+            <div className="p-3 bg-white rounded-lg border border-slate-200">
+              <span className="text-slate-500 font-medium block">Clearance Required</span>
+              <span className="font-bold text-slate-900 text-sm">{opportunity.requiredClearance}</span>
+            </div>
+          </div>
+
+          {/* Highlight Banner for SOW Strategy */}
+          <div className="bg-linear-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-xl p-4 shadow-sm border border-blue-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span className="font-bold text-sm text-white">SOW Solutions, Pathways & Resources Ready</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 uppercase tracking-wide">
+                  Win Strategy
+                </span>
+              </div>
+              <p className="text-xs text-blue-200 leading-relaxed">
+                Deconstruct this SOW description into concrete technical solutions, multi-phase execution pathways, Key Personnel staffing, and publication-ready proposal responses.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveModalTab('sow_strategy')}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold rounded-lg shadow-sm transition shrink-0 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Open SOW Strategy & Pathways</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Statement of Work (SOW) & Requirements Summary (Basis for Proposal Generation) */}
+          <div className="bg-slate-50/90 rounded-2xl p-4.5 border border-slate-200 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
+                    <FileText className="w-3 h-3 text-blue-600" />
+                    <span>Summary of Requirements</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Ready for Proposal Generation
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 pt-1">
+                  <span>Authoritative SOW & Technical Requirements Baseline</span>
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCopyRequirements}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Copy summarized Statement of Work requirements for proposal drafting"
+                >
+                  {copiedRequirements ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                  <span>{copiedRequirements ? 'Requirements Copied!' : 'Copy Summary'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onGeneratePlan(opportunity)}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  title="Generate compliant Shipley proposal volumes and win strategy using these requirements"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Generate Proposal</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Distilled Requirements Summary Box */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans space-y-2">
+              <div className="text-slate-700 whitespace-pre-line bg-slate-50/60 p-3 rounded-lg border border-slate-150 font-mono text-[11px] leading-relaxed">
+                {opportunity.requirementsSummary || `REQUIREMENTS & STATEMENT OF WORK SUMMARY (FOR PROPOSAL GENERATION):
+• Project Title: ${opportunity.title}
+• Solicitation Number: ${opportunity.solicitationNumber}
+• Customer Agency: ${opportunity.department} | ${opportunity.subTier}${opportunity.majorCommand ? ` | ${opportunity.majorCommand}` : ''} | ${opportunity.office}
+• Primary Industry NAICS: ${opportunity.naicsCode} (${opportunity.naicsTitle})
+• Small Business Program: ${opportunity.setAside}
+• Scope of Work:
+  ${opportunity.description}
+• Core Technical Deliverables:
+${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
+• Proposal Response Priorities:
+  - Technical Volume: Methodical solution response mapping to PWS deliverables, staffing matrix, and risk mitigation plan.
+  - Management Volume: Compliant Quality Control Plan and FAR 52.219-14 prime work-share compliance (>50%).
+  - Pricing Volume: Transparent CLIN breakdown and substantiated Basis of Estimate (BOE).`}
+              </div>
+            </div>
+          </div>
+
+          {/* Scope Tasks & Milestones */}
+          {opportunity.scopeBullets && opportunity.scopeBullets.length > 0 && (
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-blue-600" />
+                <span>Core Performance Deliverables & Scope</span>
+              </h4>
+              <ul className="grid grid-cols-1 gap-2">
+                {opportunity.scopeBullets.map((task, idx) => (
+                  <li key={idx} className="flex items-start gap-2 p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800">
+                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <span>{task}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Key FAR Clauses (FAR 52.219-14, etc.) */}
+          {opportunity.keyFarClauses && opportunity.keyFarClauses.length > 0 && (
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-blue-600" />
+                <span>Mandatory FAR / DFARS Clauses & Subcontracting Rules</span>
+              </h4>
+              <div className="space-y-2">
+                {opportunity.keyFarClauses.map((clause, idx) => (
+                  <div key={idx} className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-lg text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-amber-900">{clause.clause}</span>
+                      <span className="font-semibold text-slate-800">{clause.title}</span>
+                    </div>
+                    <p className="text-slate-700 leading-normal">{clause.explanation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Attachments & Solicitations Files */}
+          {opportunity.attachments && opportunity.attachments.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Download className="w-4 h-4 text-blue-600" />
+                    <span>Solicitation Packages & RFP Attachments ({opportunity.attachments.length})</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Verify attachment availability and privacy access status below before preparing proposal volumes.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadAll}
+                  disabled={downloadingPackage}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                  title="Download all unrestricted attachments in this solicitation package"
+                >
+                  <FolderDown className="w-3.5 h-3.5" />
+                  <span>{downloadingPackage ? 'Downloading Package...' : 'Download Available Files'}</span>
+                </button>
+              </div>
+
+              {/* Attachment Access & SOW Security Protocol Banner */}
+              <div className={`p-3.5 rounded-xl border text-xs ${
+                opportunity.attachmentsAccessStatus === 'Access Request Required' || opportunity.hasControlledAttachments
+                  ? 'bg-amber-50/80 border-amber-300 text-amber-950'
+                  : opportunity.attachmentsAccessStatus === 'Mixed / Some Restricted'
+                    ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+                    : 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+              }`}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-bold">
+                      {opportunity.hasControlledAttachments || opportunity.attachmentsAccessStatus === 'Access Request Required' ? (
+                        <>
+                          <Lock className="w-4 h-4 text-amber-700 shrink-0" />
+                          <span>Controlled SOW Attachments: Explicit Access Request Required on SAM.gov</span>
+                        </>
+                      ) : opportunity.attachmentsAccessStatus === 'Mixed / Some Restricted' ? (
+                        <>
+                          <Shield className="w-4 h-4 text-indigo-700 shrink-0" />
+                          <span>Mixed Attachment Accessibility: Public Synopsis + Controlled SOW Details</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <span>Public Solicitation Package: All RFP & SOW Documents Unrestricted</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {opportunity.hasControlledAttachments || opportunity.attachmentsAccessStatus === 'Access Request Required' || opportunity.attachmentsAccessStatus === 'Mixed / Some Restricted'
+                        ? 'Certain technical specifications, drawings, or Statements of Work (SOW) require an explicit SAM.gov Access Request under your authenticated contractor account (active CAGE Code & verified MPIN). Contracting Officer approval is required before downloading.'
+                        : 'All posted solicitation attachments, wage determinations, and statement of work documents are public and immediately available for direct download.'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowAccessGuideModal(!showAccessGuideModal)}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                    >
+                      {showAccessGuideModal ? 'Hide Instructions' : 'Access Request Guide'}
+                    </button>
+                    <a
+                      href={getSafeSamGovUrl(opportunity)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[11px] font-semibold flex items-center gap-1 transition"
+                    >
+                      <span>Open on SAM.gov</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {showAccessGuideModal && (
+                  <div className="mt-3 pt-3 border-t border-amber-200/80 bg-white/70 p-3 rounded-lg text-[11px] text-slate-800 space-y-1.5">
+                    <span className="font-bold text-slate-900 block">How to Request Access for Controlled SOWs on SAM.gov:</span>
+                    <ol className="list-decimal list-inside space-y-1 text-slate-700 pl-1">
+                      <li>Log in to official <strong>SAM.gov</strong> using your company's authenticated entity administrator profile.</li>
+                      <li>Navigate to Solicitation <code className="font-bold text-slate-900">{opportunity.solicitationNumber}</code> using the direct link above.</li>
+                      <li>In the <strong>Attachments / Links</strong> section of the notice, locate the controlled SOW or technical package.</li>
+                      <li>Click the <strong>"Request Access"</strong> button next to the file. Enter your company's active CAGE Code: <span className="font-mono font-bold text-blue-700">{currentProfile.cageCode}</span>.</li>
+                      <li>The Contracting Officer ({opportunity.poc.name}) will verify your entity eligibility and approve electronic access.</li>
+                    </ol>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {opportunity.attachments.map((att) => {
+                  const isDownloaded = Boolean(downloadedIds[att.id]);
+                  const isSpreadsheet = att.name.toLowerCase().includes('xlsx') || att.name.toLowerCase().includes('rate');
+                  const isControlled = att.isPublic === false || att.accessLevel?.includes('Controlled') || att.accessLevel?.includes('CUI');
+
+                  return (
+                    <div
+                      key={att.id}
+                      className={`p-3 bg-white border rounded-xl hover:border-slate-300 shadow-xs flex flex-col justify-between gap-2.5 text-xs transition ${
+                        isControlled ? 'border-amber-200/90 bg-amber-50/20' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            isSpreadsheet ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isControlled ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}>
+                            {isSpreadsheet ? <FileSpreadsheet className="w-4 h-4" /> : isControlled ? <Lock className="w-4 h-4 text-amber-600" /> : <FileText className="w-4 h-4" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 truncate" title={att.name}>{att.name}</p>
+                            <p className="text-[10px] text-slate-500 truncate">
+                              {att.type} • {att.size}
+                            </p>
+                          </div>
+                        </div>
+
+                        {isControlled ? (
+                          <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-amber-700" />
+                            <span>Controlled</span>
+                          </span>
+                        ) : (
+                          <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                            <Unlock className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>Public</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[11px] text-slate-600 leading-normal border-t border-slate-100 pt-1.5">
+                        <p className="line-clamp-2">{att.description}</p>
+                        {isControlled && (
+                          <p className="text-[10px] text-amber-800 font-medium mt-1 flex items-center gap-1">
+                            <span>⚠️ {att.accessInstructions || 'Access Request Required on SAM.gov.'}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
+                        {isControlled ? (
+                          <a
+                            href={getSafeSamGovUrl(opportunity)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold flex items-center gap-1 transition"
+                            title="Open SAM.gov notice to request access to this file"
+                          >
+                            <span>Request Access on SAM</span>
+                            <ExternalLink className="w-3 h-3 text-amber-700" />
+                          </a>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(att)}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition cursor-pointer"
+                              title="Preview Document Text"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSingle(att)}
+                              className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 text-[11px] font-medium ${
+                                isDownloaded
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                  : 'text-blue-600 hover:bg-blue-50 border-blue-200'
+                              }`}
+                              title="Download this RFP file"
+                            >
+                              {isDownloaded ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span className="hidden sm:inline text-[10px]">Saved</span>
+                                </>
+                              ) : (
+                                <Download className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Incumbent Information (if available) */}
+          {opportunity.incumbentInfo && opportunity.incumbentInfo.hasIncumbent && (
+            <div className="p-3.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
+              <span className="font-bold text-slate-900 block mb-1">Incumbent Contractor Intelligence:</span>
+              <p className="text-slate-700 mb-1">
+                <strong>Current Contractor:</strong> {opportunity.incumbentInfo.incumbentName}
+              </p>
+              <div className="flex gap-4 text-slate-600">
+                <span>Contract #: <code>{opportunity.incumbentInfo.contractNumber}</code></span>
+                {opportunity.incumbentInfo.estimatedOriginalValue && (
+                  <span>Award Value: {opportunity.incumbentInfo.estimatedOriginalValue}</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Contracting Officer POC */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div>
+              <span className="text-slate-500 font-medium block">Contracting Officer / Point of Contact</span>
+              <p className="font-bold text-slate-900 text-sm">{opportunity.poc.name}</p>
+              <p className="text-slate-600">{opportunity.poc.title} • {opportunity.office}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={`mailto:${opportunity.poc.email}?subject=Question on Solicitation ${opportunity.solicitationNumber}`}
+                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 font-medium transition"
+              >
+                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                <span>{opportunity.poc.email}</span>
+              </a>
+              <span className="text-slate-400 font-mono hidden md:inline">{opportunity.poc.phone}</span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+
+    {/* Footer Actions */}
+    <div className="bg-slate-100 px-6 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onTogglePipeline(opportunity)}
+          className={`px-4 py-2 text-xs font-semibold rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+            isInPipeline
+              ? 'bg-amber-100 text-amber-900 border-amber-300'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          {isInPipeline ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-amber-600" />
+              <span>Tracked in Pipeline</span>
+            </>
+          ) : (
+            <span>+ Add to Bid Pipeline</span>
+          )}
+        </button>
+
+        <a
+          href={getSafeSamGovUrl(opportunity)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1"
+        >
+          <span>View on SAM.gov</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </div>
+
+      <div className="flex items-center gap-2.5">
+        {activeModalTab === 'overview' ? (
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('sow_strategy')}
+            className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>⚡ SOW Strategy & Resources</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('overview')}
+            className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5 text-blue-600" />
+            <span>View SOW Synopsis</span>
+          </button>
+        )}
+
+        <button
+          onClick={() => {
+            onClose();
+            onGeneratePlan(opportunity);
+          }}
+          className="px-4 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 shadow-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+          title="Open Shipley Federal Proposal Plan and generated color team review artifacts"
+        >
+          <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+          <span>Shipley Plan & Artifacts</span>
+        </button>
+
+        <button
+          onClick={onClose}
+          className="px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+      {/* DOCUMENT PREVIEW MODAL */}
+      {previewAttachment && (
+        <div className={`fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center transition-all ${previewMaximized ? 'p-0' : 'p-2 sm:p-4 md:p-6'}`}>
+          <div className={`bg-slate-900 border border-slate-700 text-white flex flex-col shadow-2xl overflow-hidden transition-all duration-150 ${previewMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'w-full max-w-4xl max-h-[90vh] rounded-2xl animate-in fade-in zoom-in-95'}`}>
+            {/* Preview Header */}
+            <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 truncate">
+                <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <FileText className="w-4 h-4" />
+                </span>
+                <div className="truncate">
+                  <h3 className="font-bold text-sm text-white truncate">{previewAttachment.name}</h3>
+                  <p className="text-[11px] text-slate-400">
+                    {previewAttachment.type} • {previewAttachment.size} • {opportunity.solicitationNumber}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyPreviewText}
+                  className="px-2.5 py-1 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-700 flex items-center gap-1 transition"
+                  title="Copy document text to clipboard"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copiedPreview ? 'Copied!' : 'Copy'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadSingle(previewAttachment)}
+                  className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg flex items-center gap-1 transition"
+                  title="Download File"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewMaximized(!previewMaximized)}
+                  title={previewMaximized ? "Restore window size" : "Expand window (maximize)"}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  {previewMaximized ? <Minimize2 className="w-4 h-4 text-blue-400" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewAttachment(null);
+                    setPreviewMaximized(false);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
+                  title="Close document preview"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Viewer Body */}
+            <div className="p-5 overflow-y-auto flex-1 bg-slate-950/50">
+              <pre className="font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed select-all">
+                {generateAttachmentContent(previewAttachment, opportunity)}
+              </pre>
+            </div>
+
+            {/* Preview Footer */}
+            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>Official SAM.gov Procurement Artifact</span>
+              <button
+                type="button"
+                onClick={() => setPreviewAttachment(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -1,0 +1,6 @@
+{
+  "name": "SBA GovWin: SAM.gov Contract Opportunities & Bid Strategy Suite",
+  "description": "Canvass active SAM.gov federal contract solicitations, filter by NAICS codes, set-asides, location, and deadlines, and generate tailored job strategies and solicitation business plans for SBA small business owners.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
