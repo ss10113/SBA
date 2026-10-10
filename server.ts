@@ -9,6 +9,7 @@ import { ALL_SAM_OPPORTUNITIES } from './src/data/samOpportunityDatabase.ts';
 import { CURATED_SAM_OPPORTUNITIES } from './src/data/samCuratedData.ts';
 import { FEDERAL_ORGANIZATIONS, matchesFederalOrganization } from './src/data/federalOrganizations.ts';
 import { getNaicsDefinition } from './src/data/naicsDatabase.ts';
+import { US_TERRITORY_CODES, US_STATE_CODES } from './src/data/usJurisdictions.ts';
 
 dotenv.config();
 
@@ -1083,6 +1084,7 @@ app.post('/api/sam/opportunities', async (req, res) => {
       naicsCode, 
       setAside, 
       state, 
+      city,
       searchQuery, 
       noticeType, 
       agency, 
@@ -1129,7 +1131,10 @@ app.post('/api/sam/opportunities', async (req, res) => {
         }
 
         if (naicsCode) p.append('ncode', String(naicsCode).trim());
-        if (state) p.append('state', String(state).trim().toUpperCase());
+        if (state && state !== 'all' && state !== 'ALL' && state !== 'ALL_TERRITORIES' && state !== 'ALL_50_STATES') {
+          p.append('state', String(state).trim().toUpperCase());
+        }
+        if (city) p.append('city', String(city).trim());
         if (setAside && SET_ASIDE_CODE_MAP[setAside]) {
           p.append('typeOfSetAside', SET_ASIDE_CODE_MAP[setAside]);
         }
@@ -1367,8 +1372,30 @@ app.post('/api/sam/opportunities', async (req, res) => {
       if (setAside && setAside !== 'All Set-Asides') {
         mergedResults = mergedResults.filter((o) => o.setAside.toLowerCase().includes(setAside.toLowerCase()) || setAside.toLowerCase().includes(o.setAside.toLowerCase()));
       }
-      if (state) {
-        mergedResults = mergedResults.filter((o) => (o.placeOfPerformance?.state || '').toUpperCase() === state.toUpperCase());
+      if (state && state !== 'all' && state !== 'ALL') {
+        if (state === 'ALL_TERRITORIES') {
+          mergedResults = mergedResults.filter((o) => {
+            const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+            return US_TERRITORY_CODES.includes(st);
+          });
+        } else if (state === 'ALL_50_STATES') {
+          mergedResults = mergedResults.filter((o) => {
+            const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+            return US_STATE_CODES.includes(st);
+          });
+        } else {
+          mergedResults = mergedResults.filter((o) => {
+            const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+            return st === state.toUpperCase();
+          });
+        }
+      }
+      if (city) {
+        const cq = city.toLowerCase().trim();
+        mergedResults = mergedResults.filter((o) =>
+          (o.placeOfPerformance?.city || '').toLowerCase().includes(cq) ||
+          (o.contractingOfficeAddress?.city || '').toLowerCase().includes(cq)
+        );
       }
       if (noticeType) {
         mergedResults = mergedResults.filter((o) => (o.type || '').toLowerCase().includes(noticeType.toLowerCase()));
@@ -1441,8 +1468,30 @@ app.post('/api/sam/opportunities', async (req, res) => {
     if (setAside && setAside !== 'All Set-Asides') {
       results = results.filter((o) => o.setAside.toLowerCase().includes(setAside.toLowerCase()) || setAside.toLowerCase().includes(o.setAside.toLowerCase()));
     }
-    if (state) {
-      results = results.filter((o) => (o.placeOfPerformance?.state || '').toUpperCase() === state.toUpperCase());
+    if (state && state !== 'all' && state !== 'ALL') {
+      if (state === 'ALL_TERRITORIES') {
+        results = results.filter((o) => {
+          const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+          return US_TERRITORY_CODES.includes(st);
+        });
+      } else if (state === 'ALL_50_STATES') {
+        results = results.filter((o) => {
+          const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+          return US_STATE_CODES.includes(st);
+        });
+      } else {
+        results = results.filter((o) => {
+          const st = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').toUpperCase();
+          return st === state.toUpperCase();
+        });
+      }
+    }
+    if (city) {
+      const cq = city.toLowerCase().trim();
+      results = results.filter((o) =>
+        (o.placeOfPerformance?.city || '').toLowerCase().includes(cq) ||
+        (o.contractingOfficeAddress?.city || '').toLowerCase().includes(cq)
+      );
     }
     if (noticeType) {
       results = results.filter((o) => (o.type || '').toLowerCase().includes(noticeType.toLowerCase()));

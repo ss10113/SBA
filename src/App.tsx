@@ -37,7 +37,9 @@ import {
   OpportunityCustomLaborItem
 } from './types/contract';
 import { 
-  SAMPLE_PROFILES 
+  SAMPLE_PROFILES,
+  US_TERRITORY_CODES,
+  US_STATE_CODES
 } from './data/samCuratedData';
 import { 
   ALL_SAM_OPPORTUNITIES, 
@@ -69,6 +71,7 @@ const DEFAULT_FILTERS: FilterState = {
   naicsFilter: '',
   setAsideFilter: 'All Set-Asides',
   stateFilter: '',
+  cityFilter: '',
   noticeTypeFilter: '',
   agencyFilter: '',
   statusFilter: 'all',
@@ -435,6 +438,7 @@ export default function App() {
           naicsCode: filters.naicsFilter || undefined,
           setAside: filters.setAsideFilter !== 'All Set-Asides' ? filters.setAsideFilter : undefined,
           state: filters.stateFilter || undefined,
+          city: filters.cityFilter || undefined,
           noticeType: filters.noticeTypeFilter || undefined,
           agency: filters.agencyFilter || undefined,
           searchQuery: filters.searchQuery || undefined,
@@ -686,9 +690,32 @@ export default function App() {
           return false;
         }
 
-        // State filter (place of performance)
-        if (filters.stateFilter && (opp.placeOfPerformance?.state || '').toUpperCase() !== filters.stateFilter.toUpperCase()) {
-          return false;
+        // State & U.S. Territories filter (Place of Performance or Contracting Office)
+        if (filters.stateFilter && filters.stateFilter !== 'all' && filters.stateFilter !== 'ALL') {
+          const oppState = (opp.placeOfPerformance?.state || opp.contractingOfficeAddress?.state || '').toUpperCase();
+          if (filters.stateFilter === 'ALL_TERRITORIES') {
+            if (!US_TERRITORY_CODES.includes(oppState)) {
+              return false;
+            }
+          } else if (filters.stateFilter === 'ALL_50_STATES') {
+            if (!US_STATE_CODES.includes(oppState)) {
+              return false;
+            }
+          } else {
+            if (oppState !== filters.stateFilter.toUpperCase()) {
+              return false;
+            }
+          }
+        }
+
+        // City / Local Area filter (Place of Performance or Contracting Office)
+        if (filters.cityFilter) {
+          const cq = filters.cityFilter.toLowerCase().trim();
+          const popCity = (opp.placeOfPerformance?.city || '').toLowerCase();
+          const officeCity = (opp.contractingOfficeAddress?.city || '').toLowerCase();
+          if (!popCity.includes(cq) && !officeCity.includes(cq)) {
+            return false;
+          }
         }
 
         // Notice Type filter
@@ -830,6 +857,25 @@ export default function App() {
       inactive,
       awarded,
     };
+  }, [opportunities]);
+
+  // Aggregated cities across all available opportunities for fast lookup and suggestions
+  const availableCities = useMemo(() => {
+    const cityMap = new Map<string, { city: string; state: string; count: number }>();
+    opportunities.forEach((o) => {
+      const c = (o.placeOfPerformance?.city || o.contractingOfficeAddress?.city || '').trim();
+      const s = (o.placeOfPerformance?.state || o.contractingOfficeAddress?.state || '').trim().toUpperCase();
+      if (c && s) {
+        const key = `${c.toLowerCase()}|${s}`;
+        const existing = cityMap.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          cityMap.set(key, { city: c, state: s, count: 1 });
+        }
+      }
+    });
+    return Array.from(cityMap.values()).sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
   }, [opportunities]);
 
   // Sliced opportunities for paged or infinite browse mode
@@ -1198,6 +1244,7 @@ export default function App() {
               primaryNaics={currentProfile.primaryNaics}
               viewMode={viewMode}
               setViewMode={setViewMode}
+              availableCities={availableCities}
             />
 
             {/* Informative Explanation of Active vs Inactive vs Awarded Database Records */}

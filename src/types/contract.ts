@@ -356,6 +356,7 @@ export interface FilterState {
   naicsFilter: string;
   setAsideFilter: string;
   stateFilter: string;
+  cityFilter?: string;
   noticeTypeFilter: string;
   agencyFilter: string;
   statusFilter?: 'all' | 'active' | 'inactive' | 'awarded';

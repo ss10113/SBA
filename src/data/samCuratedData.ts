@@ -1788,13 +1788,20 @@ export const SET_ASIDE_OPTIONS = [
   'Full and Open / Unrestricted',
 ];
 
-export const US_STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
-];
+export {
+  US_STATES,
+  US_TERRITORIES,
+  US_MILITARY_OVERSEAS,
+  US_STATES_LIST,
+  ALL_US_JURISDICTIONS,
+  US_TERRITORY_CODES,
+  US_STATE_CODES,
+  ALL_JURISDICTION_CODES,
+  getJurisdictionName,
+  getPopularCitiesForJurisdiction,
+  isTerritory,
+  type UsJurisdiction,
+} from './usJurisdictions.ts';
 
 export { 
   FEDERAL_ORGANIZATIONS, 

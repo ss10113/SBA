@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Search, 
   X, 
@@ -10,13 +10,21 @@ import {
   Building,
   Target,
   LayoutGrid,
-  TableProperties
+  TableProperties,
+  Globe,
+  Compass
 } from 'lucide-react';
 import { FilterState } from '../types/contract';
 import { 
   POPULAR_NAICS, 
   SET_ASIDE_OPTIONS, 
-  US_STATES 
+  US_STATES,
+  US_TERRITORIES,
+  US_STATES_LIST,
+  US_MILITARY_OVERSEAS,
+  getJurisdictionName,
+  getPopularCitiesForJurisdiction,
+  isTerritory
 } from '../data/samCuratedData';
 import { 
   FEDERAL_ORGANIZATIONS, 
@@ -62,6 +70,7 @@ interface FilterBarProps {
   setViewMode?: (mode: 'cards' | 'table') => void;
   totalSamDatabaseRecords?: number;
   onOpenApiWorkbench?: () => void;
+  availableCities?: { city: string; state: string; count: number }[];
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -77,6 +86,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   setViewMode,
   totalSamDatabaseRecords,
   onOpenApiWorkbench,
+  availableCities = [],
 }) => {
   const [showAdvanced, setShowAdvanced] = React.useState(false);
 
@@ -85,11 +95,42 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.naicsFilter,
     filters.setAsideFilter !== 'All Set-Asides' ? filters.setAsideFilter : '',
     filters.stateFilter,
+    filters.cityFilter,
     filters.noticeTypeFilter,
     filters.agencyFilter,
     filters.dueWithinDays !== 'all' ? filters.dueWithinDays : '',
     filters.minFitScore > 0 ? `${filters.minFitScore}%+` : '',
   ].filter(Boolean).length;
+
+  const popularCitiesForSelected = useMemo(() => {
+    if (!filters.stateFilter || filters.stateFilter === 'all' || filters.stateFilter === 'ALL') {
+      return [];
+    }
+    if (filters.stateFilter === 'ALL_TERRITORIES') {
+      return ['San Juan', 'Santa Rita', 'St. Thomas', 'Pago Pago', 'Saipan'];
+    }
+    return getPopularCitiesForJurisdiction(filters.stateFilter);
+  }, [filters.stateFilter]);
+
+  const citySuggestions = useMemo(() => {
+    if (!availableCities || availableCities.length === 0) return [];
+    if (!filters.stateFilter || filters.stateFilter === 'all' || filters.stateFilter === 'ALL') {
+      return availableCities.slice(0, 50);
+    }
+    if (filters.stateFilter === 'ALL_TERRITORIES') {
+      return availableCities.filter((c: { city: string; state: string; count: number }) =>
+        ['PR', 'GU', 'VI', 'AS', 'MP', 'UM'].includes(c.state.toUpperCase())
+      );
+    }
+    if (filters.stateFilter === 'ALL_50_STATES') {
+      return availableCities.filter((c: { city: string; state: string; count: number }) =>
+        !['PR', 'GU', 'VI', 'AS', 'MP', 'UM'].includes(c.state.toUpperCase())
+      );
+    }
+    return availableCities.filter((c: { city: string; state: string; count: number }) =>
+      c.state.toUpperCase() === filters.stateFilter.toUpperCase()
+    );
+  }, [availableCities, filters.stateFilter]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters((prev) => ({ ...prev, searchQuery: e.target.value }));
@@ -217,25 +258,105 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Advanced Filters Panel */}
       {showAdvanced && (
-        <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-200">
-          {/* Location State */}
+        <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 animate-in fade-in duration-200">
+          {/* Location: State & U.S. Territories */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-              <span>Place of Performance (State)</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
+                <span>State & U.S. Territory</span>
+              </span>
+              {filters.stateFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '' }))}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
             </label>
             <select
               value={filters.stateFilter}
               onChange={(e) => setFilters((prev) => ({ ...prev, stateFilter: e.target.value }))}
-              className="w-full py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full py-2 px-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium cursor-pointer"
             >
-              <option value="">All 50 States & Territories</option>
-              {US_STATES.map((st) => (
-                <option key={st} value={st}>
-                  {st}
+              <option value="">🌐 All 50 States & All Territories</option>
+              <option value="ALL_TERRITORIES">🏝️ All U.S. Territories (PR, GU, VI, AS, MP, UM)</option>
+              <option value="ALL_50_STATES">🇺🇸 All 50 U.S. States & D.C.</option>
+              <optgroup label="🏝️ U.S. Territories (6)">
+                {US_TERRITORIES.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.name} ({t.code})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="🇺🇸 U.S. States (50) & District of Columbia">
+                {US_STATES_LIST.map((st) => (
+                  <option key={st.code} value={st.code}>
+                    {st.name} ({st.code})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="🌍 Military Overseas & Forward Regions">
+                {US_MILITARY_OVERSEAS.map((m) => (
+                  <option key={m.code} value={m.code}>
+                    {m.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* Location: City / Local Area Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                <span>City / Metro Area</span>
+              </span>
+              {filters.cityFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFilters((prev) => ({ ...prev, cityFilter: '' }))}
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={
+                  filters.stateFilter === 'PR' ? 'e.g. San Juan, Guaynabo' :
+                  filters.stateFilter === 'GU' ? 'e.g. Santa Rita, Yigo' :
+                  filters.stateFilter === 'VI' ? 'e.g. St. Thomas, St. Croix' :
+                  'Filter by city...'
+                }
+                value={filters.cityFilter || ''}
+                onChange={(e) => setFilters((prev) => ({ ...prev, cityFilter: e.target.value }))}
+                list="filterbar-cities-list"
+                className="w-full py-2 pl-2.5 pr-7 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              {filters.cityFilter && (
+                <button
+                  type="button"
+                  onClick={() => setFilters((prev) => ({ ...prev, cityFilter: '' }))}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  title="Clear city filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <datalist id="filterbar-cities-list">
+              {citySuggestions.map((c: { city: string; state: string; count: number }) => (
+                <option key={`${c.city}-${c.state}`} value={c.city}>
+                  {c.city}, {c.state} ({c.count} notices)
                 </option>
               ))}
-            </select>
+            </datalist>
           </div>
 
           {/* Response Deadline */}
@@ -281,7 +402,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Target className="w-3.5 h-3.5 text-blue-600" />
-                <span>Min SBA Profile Fit Score</span>
+                <span>Min Fit Score</span>
               </span>
               <span className="font-mono text-blue-700 font-bold">
                 {filters.minFitScore > 0 ? `${filters.minFitScore}%+` : 'Any'}
@@ -304,8 +425,158 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </div>
           </div>
 
+          {/* Territorial & Regional Quick Selector Row */}
+          <div className="col-span-1 sm:col-span-2 lg:col-span-5 pt-3 border-t border-slate-100 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Fast Geographic Shortcuts (All States & U.S. Territories):</span>
+              </span>
+              {(filters.stateFilter || filters.cityFilter) && (
+                <button
+                  type="button"
+                  onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '', cityFilter: '' }))}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer"
+                >
+                  Reset Location to Nationwide
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer ${
+                  !filters.stateFilter
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                🌐 Nationwide & All Territories
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'ALL_TERRITORIES', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer flex items-center gap-1 ${
+                  filters.stateFilter === 'ALL_TERRITORIES'
+                    ? 'bg-indigo-600 text-white border-indigo-700 font-semibold shadow-xs'
+                    : 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-800 border-indigo-200'
+                }`}
+                title="Search across all 6 U.S. Territories: Puerto Rico, Guam, Virgin Islands, American Samoa, Northern Marianas, Minor Outlying Islands"
+              >
+                <span>🏝️ All U.S. Territories</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'PR', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'PR'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="Puerto Rico (San Juan, Guaynabo, Fort Buchanan)"
+              >
+                🇵🇷 Puerto Rico (PR)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'GU', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'GU'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="Guam (Santa Rita, Yigo, Andersen AFB, Naval Base Guam)"
+              >
+                🇬🇺 Guam (GU)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'VI', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'VI'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="U.S. Virgin Islands (St. Thomas, St. Croix, Charlotte Amalie)"
+              >
+                🇻🇮 Virgin Islands (VI)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'AS', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'AS'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="American Samoa (Pago Pago, Tafuna)"
+              >
+                🇦🇸 American Samoa (AS)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'MP', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'MP'
+                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="Northern Mariana Islands (Saipan, Tinian)"
+              >
+                🇲🇵 Northern Marianas (MP)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'ALL_50_STATES', cityFilter: '' }))}
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer ${
+                  filters.stateFilter === 'ALL_50_STATES'
+                    ? 'bg-slate-800 text-white border-slate-900 font-semibold shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                title="Restrict to the 50 US States and District of Columbia"
+              >
+                🇺🇸 50 States & DC Only
+              </button>
+            </div>
+
+            {/* Popular City suggestions for selected jurisdiction */}
+            {popularCitiesForSelected.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                <span className="text-slate-500 font-medium">
+                  Cities in {getJurisdictionName(filters.stateFilter)}:
+                </span>
+                {popularCitiesForSelected.map((city) => {
+                  const isCityActive = filters.cityFilter?.toLowerCase() === city.toLowerCase();
+                  return (
+                    <button
+                      key={city}
+                      type="button"
+                      onClick={() => setFilters((prev) => ({ ...prev, cityFilter: isCityActive ? '' : city }))}
+                      className={`px-2 py-0.5 rounded border text-[11px] font-medium cursor-pointer transition ${
+                        isCityActive
+                          ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
+                          : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200 hover:border-blue-300'
+                      }`}
+                    >
+                      {isCityActive ? `✓ ${city}` : `+ ${city}`}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Quick Federal Organization Presets Bar */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-4 pt-3 border-t border-slate-100">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-5 pt-3 border-t border-slate-100">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                 <Building className="w-3.5 h-3.5 text-blue-600" />
@@ -431,11 +702,33 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           )}
 
           {filters.stateFilter && (
-            <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px]">
-              State: {filters.stateFilter}
+            <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+              <Globe className="w-3 h-3 text-indigo-700" />
+              <span>
+                {filters.stateFilter === 'ALL_TERRITORIES'
+                  ? 'Scope: All U.S. Territories (PR, GU, VI, AS, MP, UM)'
+                  : filters.stateFilter === 'ALL_50_STATES'
+                  ? 'Scope: 50 States & D.C.'
+                  : `${getJurisdictionName(filters.stateFilter)} (${filters.stateFilter})`}
+              </span>
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '' }))}
-                className="hover:text-indigo-900 cursor-pointer"
+                className="hover:text-indigo-950 cursor-pointer ml-0.5"
+                title="Clear state/territory filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {filters.cityFilter && (
+            <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-900 px-2.5 py-0.5 rounded-full text-[11px] font-medium">
+              <MapPin className="w-3 h-3 text-violet-700" />
+              <span>City: {filters.cityFilter}</span>
+              <button
+                onClick={() => setFilters((prev) => ({ ...prev, cityFilter: '' }))}
+                className="hover:text-violet-950 cursor-pointer ml-0.5"
+                title="Clear city filter"
               >
                 <X className="w-3 h-3" />
               </button>

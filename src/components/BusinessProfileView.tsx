@@ -20,7 +20,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import { BusinessProfile } from '../types/contract';
-import { POPULAR_NAICS, US_STATES } from '../data/samCuratedData';
+import { POPULAR_NAICS, US_STATES, US_TERRITORIES, US_STATES_LIST } from '../data/samCuratedData';
 import { getNaicsDefinition, OFFICIAL_NAICS_DATABASE, NAICS_BY_SECTOR } from '../data/naicsDatabase';
 
 interface BusinessProfileViewProps {
@@ -349,11 +349,20 @@ export const BusinessProfileView: React.FC<BusinessProfileViewProps> = ({
                 onChange={(e) => setProfile({ ...profile, state: e.target.value })}
                 className="w-full py-2 px-3 border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
               >
-                {US_STATES.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
+                <optgroup label="U.S. States (50) & District of Columbia">
+                  {US_STATES_LIST.map((st) => (
+                    <option key={st.code} value={st.code}>
+                      {st.name} ({st.code})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="U.S. Territories (6)">
+                  {US_TERRITORIES.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.name} ({t.code})
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
