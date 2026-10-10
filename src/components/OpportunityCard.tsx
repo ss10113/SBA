@@ -102,7 +102,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <Copy className="w-3 h-3 text-slate-400" />
               )}
             </button>
-            {onValidate ? (
+            {onValidate && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -115,18 +115,20 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
                 <span>Validate</span>
                 <ExternalLink className="w-3 h-3 text-blue-600" />
               </button>
-            ) : (
-              <a
-                href={getSafeSamGovUrl(opportunity)}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="p-1 text-slate-400 hover:text-blue-600 rounded transition"
-                title="View official notice on SAM.gov (verified link)"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
             )}
+
+            <a
+              href={getSafeSamGovUrl(opportunity)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs hover:shadow-xs cursor-pointer"
+              title="Open official solicitation directly on live SAM.gov portal"
+            >
+              <span>Live SAM.gov</span>
+              <ExternalLink className="w-3 h-3 text-emerald-600" />
+            </a>
+
             <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
               {opportunity.type}
             </span>

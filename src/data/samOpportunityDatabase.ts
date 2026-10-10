@@ -726,7 +726,23 @@ function generateExtendedOpportunities(): SAMOpportunity[] {
       };
     }
 
-    const title = `${template.titlePrefix} - ${agency.subTier}`;
+    // Specialized program qualifiers to guarantee authentic, distinct solicitation titles
+    const PROGRAM_FOCUS_AREAS = [
+      'Phase II Modernization & Expansion',
+      'Operations, Maintenance & Technical Engineering',
+      'Enterprise Deployment & Architecture',
+      'Mission Assurance & Systems Integration',
+      'Regional Infrastructure & Site Reliability',
+      'Zero Trust Security & Cloud Migration',
+      'Advanced Automation & Continuous Compliance',
+      'Lifecycle Sustainment & Readiness',
+      'Next-Gen Optimization & Interoperability',
+      'Strategic Implementation & Capacity Support',
+      'Targeted Field Execution & Logistics',
+    ];
+    const programFocus = PROGRAM_FOCUS_AREAS[i % PROGRAM_FOCUS_AREAS.length];
+    const locQualifier = agency.state ? ` (${agency.city || agency.state})` : '';
+    const title = `${template.titlePrefix}: ${programFocus} - ${agency.subTier}${locQualifier}`;
 
     const isRestrictedDefense = agency.department.includes('DEFENSE') || agency.department.includes('ARMY') || agency.department.includes('NAVY') || agency.department.includes('AIR FORCE') || agency.department.includes('DHA') || clearance === 'Top Secret';
     const oppAttachments = [

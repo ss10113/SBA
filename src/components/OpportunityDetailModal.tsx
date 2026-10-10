@@ -288,10 +288,10 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                     href={`https://sam.gov/opp/${topDirectUUID}/view`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1 rounded flex items-center gap-1.5 font-bold transition shadow-xs"
-                    title="Direct link to official notice on SAM.gov"
+                    className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-bold transition shadow-xs cursor-pointer"
+                    title="Direct live link to official solicitation notice on SAM.gov"
                   >
-                    <span>Direct Notice on SAM.gov</span>
+                    <span>Live Solicitation Link (SAM.gov)</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 );
@@ -301,10 +301,10 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                   href={getSafeSamGovUrl(opportunity)}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs bg-emerald-950 hover:bg-emerald-900 text-emerald-300 hover:text-emerald-200 border border-emerald-800/80 px-2.5 py-1 rounded flex items-center gap-1.5 font-semibold transition"
-                  title="Search this Solicitation Number directly on live SAM.gov portal"
+                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-bold transition shadow-xs cursor-pointer"
+                  title="Open live solicitation package directly on SAM.gov"
                 >
-                  <span>Search on SAM.gov</span>
+                  <span>Live Solicitation Link (SAM.gov)</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               );
