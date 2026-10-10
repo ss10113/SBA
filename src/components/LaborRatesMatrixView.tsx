@@ -90,6 +90,15 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
     fetchGsaStatus();
   }, []);
 
+  useEffect(() => {
+    if (viewMode === 'live_gsa') {
+      fetchGsaStatus();
+      if (liveGsaRates.length === 0) {
+        handleFetchLiveGsaRates('Engineer');
+      }
+    }
+  }, [viewMode]);
+
   const handleFetchLiveGsaRates = async (overrideQuery?: string) => {
     const q = overrideQuery !== undefined ? overrideQuery : (liveGsaQuery || searchQuery || 'Engineer');
     setIsLoadingLiveGsa(true);
@@ -101,6 +110,7 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
         body: JSON.stringify({ query: q, limit: 30 }),
       });
       const data = await res.json();
+      fetchGsaStatus();
       if (data.rates && data.rates.length > 0) {
         setLiveGsaRates(data.rates);
       } else {
@@ -494,16 +504,27 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
                 </p>
               </div>
 
-              {!gsaStatus?.hasLiveApiKey && (
-                <button
-                  type="button"
-                  onClick={() => setIsGsaModalOpen(true)}
-                  className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-                >
-                  <Key className="w-4 h-4 text-amber-400" />
-                  <span>Input GSA API Key</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsGsaModalOpen(true)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer border ${
+                  gsaStatus?.hasLiveApiKey
+                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
+                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                }`}
+              >
+                {gsaStatus?.hasLiveApiKey ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>GSA API Key: Active ({gsaStatus.maskedKey})</span>
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4 text-amber-400" />
+                    <span>GSA Rates API Key: Configure</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Live Search Controls */}

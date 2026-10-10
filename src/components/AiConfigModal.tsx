@@ -37,7 +37,7 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
   onClose,
   onConfigSaved,
 }) => {
-  const [activeTab, setActiveTab] = useState<'config' | 'sam-sba' | 'vm-guide' | 'docker'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'sam-sba' | 'gsa-calc' | 'vm-guide' | 'docker'>('config');
   const [provider, setProvider] = useState<'gemini' | 'ollama' | 'openai-compatible' | 'custom'>('gemini');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
@@ -54,6 +54,15 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
   const [samStatus, setSamStatus] = useState<any>(null);
   const [testingSamKey, setTestingSamKey] = useState(false);
   const [samTestResult, setSamTestResult] = useState<any>(null);
+
+  // GSA Acquisition Gateway & CALC API Key State
+  const [gsaApiKeyInput, setGsaApiKeyInput] = useState('');
+  const [showGsaKey, setShowGsaKey] = useState(false);
+  const [savingGsaKey, setSavingGsaKey] = useState(false);
+  const [gsaFeedback, setGsaFeedback] = useState<{ text: string; ok: boolean } | null>(null);
+  const [gsaStatus, setGsaStatus] = useState<any>(null);
+  const [testingGsaKey, setTestingGsaKey] = useState(false);
+  const [gsaTestResult, setGsaTestResult] = useState<any>(null);
   
   // Status & testing
   const [isLoading, setIsLoading] = useState(false);
@@ -82,6 +91,16 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
     }
   };
 
+  const loadGsaStatus = async () => {
+    try {
+      const res = await fetch('/api/gsa/status');
+      const data = await res.json();
+      setGsaStatus(data);
+    } catch (err) {
+      console.warn('Could not load GSA status:', err);
+    }
+  };
+
   // Fetch current config on open
   useEffect(() => {
     if (!isOpen) return;
@@ -100,6 +119,7 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
       .finally(() => setIsLoading(false));
 
     loadSamStatus();
+    loadGsaStatus();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -237,6 +257,55 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
       setSamTestResult({ isValid: false, message: err.message });
     } finally {
       setTestingSamKey(false);
+    }
+  };
+
+  const handleSaveGsaKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingGsaKey(true);
+    setGsaFeedback(null);
+    try {
+      const res = await fetch('/api/gsa/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: gsaApiKeyInput }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGsaFeedback({
+          text: gsaApiKeyInput.trim() ? 'GSA Acquisition Gateway & CALC API Key saved and activated!' : 'GSA API key cleared.',
+          ok: true,
+        });
+        setGsaApiKeyInput('');
+        loadGsaStatus();
+        if (onConfigSaved) onConfigSaved();
+      } else {
+        setGsaFeedback({ text: data.message || 'Failed to update GSA key', ok: false });
+      }
+    } catch (err: any) {
+      setGsaFeedback({ text: err.message || 'Error saving key', ok: false });
+    } finally {
+      setSavingGsaKey(false);
+    }
+  };
+
+  const handleTestGsaKey = async () => {
+    setTestingGsaKey(true);
+    setGsaTestResult(null);
+    try {
+      const res = await fetch('/api/gsa/verify-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: gsaApiKeyInput || undefined,
+        }),
+      });
+      const data = await res.json();
+      setGsaTestResult(data);
+    } catch (err: any) {
+      setGsaTestResult({ isValid: false, message: err.message });
+    } finally {
+      setTestingGsaKey(false);
     }
   };
 
@@ -407,6 +476,22 @@ WantedBy=multi-user.target
             <Key className="w-3.5 h-3.5 text-amber-600" />
             <span>SBA / SAM.gov Key</span>
             {samStatus?.hasLiveApiKey && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('gsa-calc')}
+            className={`pb-2.5 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'gsa-calc'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-emerald-600" />
+            <span>GSA Rates Key</span>
+            {gsaStatus?.hasLiveApiKey && (
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             )}
           </button>
@@ -944,6 +1029,169 @@ WantedBy=multi-user.target
                 >
                   {savingSamKey ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>Save SAM / SBA API Key</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Tab: GSA Acquisition Gateway & CALC Rates API Key Configuration */}
+        {activeTab === 'gsa-calc' && (
+          <form onSubmit={handleSaveGsaKey} className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+            {/* Live GSA Status Banner */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${gsaStatus?.hasLiveApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                <div>
+                  <span className="font-bold text-slate-900">GSA Rates Engine Status: </span>
+                  <span className="text-slate-600 font-mono">
+                    Mode: <strong>{gsaStatus?.hasLiveApiKey ? 'CUSTOM LIVE KEY (api.gsa.gov)' : 'GSA PUBLIC DEMO KEY / BENCHMARKS'}</strong>
+                  </span>
+                  {gsaStatus?.maskedKey && (
+                    <span className="text-slate-400 font-mono ml-2 text-[11px]">
+                      (Key: {gsaStatus.maskedKey})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs">
+                {gsaStatus?.hasLiveApiKey ? (
+                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Custom GSA Key Active</span>
+                  </span>
+                ) : (
+                  <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Ready (Public Demo Key)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Key Input Card */}
+            <div className="bg-emerald-50/40 border border-emerald-200 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between gap-2 text-slate-900">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">GSA Acquisition Gateway & CALC API Key</h4>
+                    <p className="text-xs text-slate-500">
+                      Query live awarded contract ceiling rates across GSA MAS Schedules in real time.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href="https://open.gsa.gov/api/key/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-300/80"
+                >
+                  <span>Get Free GSA API Key</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  GSA API Key (api.gsa.gov)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showGsaKey ? 'text' : 'password'}
+                    value={gsaApiKeyInput}
+                    onChange={(e) => setGsaApiKeyInput(e.target.value)}
+                    placeholder={gsaStatus?.hasLiveApiKey ? `•••••••••••••••• (Active: ${gsaStatus.maskedKey} - enter new key to replace)` : 'Paste your api.gsa.gov API key here...'}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGsaKey(!showGsaKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showGsaKey ? 'Hide key' : 'Show key'}
+                  >
+                    {showGsaKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Key is saved securely to server runtime configuration for live GSA CALC ceiling rate pulls.
+                </p>
+              </div>
+
+              {/* Endpoints Info */}
+              <div className="bg-white border border-emerald-200 rounded-lg p-3 text-xs space-y-1.5">
+                <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Active GSA API Endpoints:</span>
+                <div className="font-mono text-[10px] text-slate-600 space-y-0.5">
+                  <div>• Gateway v4.0: <code className="text-emerald-700">https://api.gsa.gov/acquisitiongateway/api/v4.0/</code></div>
+                  <div>• CALC Ceiling Rates: <code className="text-emerald-700">https://api.gsa.gov/acquisition/calc/v3/api/ceilingrates/</code></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Results Banner */}
+            {gsaTestResult && (
+              <div className={`p-4 rounded-xl border text-xs ${gsaTestResult.isValid ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-red-50 border-red-300 text-red-950'}`}>
+                <div className="flex items-center gap-2 font-bold mb-1">
+                  {gsaTestResult.isValid ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>GSA API Handshake Verified (HTTP {gsaTestResult.httpStatus || 200})!</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-red-600" />
+                      <span>Verification Note: {gsaTestResult.message || 'Key test completed'}</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-600 font-mono">
+                  {gsaTestResult.message}
+                </p>
+              </div>
+            )}
+
+            {gsaFeedback && (
+              <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 font-medium ${gsaFeedback.ok ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-red-50 border-red-300 text-red-900'}`}>
+                {gsaFeedback.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                <span>{gsaFeedback.text}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleTestGsaKey}
+                disabled={testingGsaKey}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-semibold text-xs border border-slate-300 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${testingGsaKey ? 'animate-spin' : ''}`} />
+                <span>{testingGsaKey ? 'Verifying with api.gsa.gov...' : 'Test Key with GSA'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {gsaStatus?.hasLiveApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGsaApiKeyInput('');
+                      handleSaveGsaKey({ preventDefault: () => {} } as any);
+                    }}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition cursor-pointer"
+                  >
+                    Disconnect Key
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={savingGsaKey}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                >
+                  {savingGsaKey ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>Save GSA Rates API Key</span>
                 </button>
               </div>
             </div>
