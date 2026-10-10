@@ -1,3 +1,6 @@
+import { OpportunityCustomLaborItem, LaborCategoryBenchmark } from '../data/federalLaborCategories';
+export type { OpportunityCustomLaborItem, LaborCategoryBenchmark };
+
 export type OpportunityStatus = 'active' | 'inactive' | 'awarded';
 
 export interface AwardeeInfo {
@@ -106,6 +109,7 @@ export interface SAMOpportunity {
   sourceLink: string;
   status?: OpportunityStatus;
   awardeeInfo?: AwardeeInfo;
+  customLaborItems?: OpportunityCustomLaborItem[];
 }
 
 export interface BusinessProfile {
@@ -291,6 +295,7 @@ export interface SowResourceStrategy {
       total: string;
     }[];
   };
+  customLaborCategories?: OpportunityCustomLaborItem[];
   generatedAt?: string;
   sourceTag?: string;
 }

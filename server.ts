@@ -2699,7 +2699,8 @@ To ensure operational superiority, ${company} commits the following core labor c
 - **Operational Support Staff (3.0 FTE):** Fully credentialed support technicians executing day-to-day requirements.
 
 All personnel meet or exceed the mandatory ${clearance} security clearance criteria specified in the solicitation.
-
+${(opportunity.customLaborItems && opportunity.customLaborItems.length > 0) ? `\n#### 3.1 Custom Configured CLIN Labor Rate Allocations & Rate Limits:
+${opportunity.customLaborItems.map((ci: any) => `- **${ci.clinNumber}: ${ci.roleTitle}** | Rate: $${ci.rate?.toFixed ? ci.rate.toFixed(2) : ci.rate}/hr (Benchmarked Limits: $${ci.minRateLimit || ci.rate} - $${ci.maxRateLimit || ci.rate}/hr) | Est. Hours: ${ci.hours?.toLocaleString() || 1920} hrs | Subtotal: $${((ci.rate || 0) * (ci.hours || 1920)).toLocaleString()} | Performer: ${ci.performerType || 'Prime'}`).join('\n')}\n` : ''}
 ---
 
 ### 4.0 SUMMARY OF COMMITMENT
@@ -2730,14 +2731,23 @@ By selecting ${company}, ${opportunity.department} secures a proven small busine
         { factor: 'Factor 3: Small Business Utilization (FAR 52.219-14)', importance: 'Pass / Fail Gate', description: 'Prime performs >=50% labor' },
         { factor: 'Factor 4: Price Reasonableness & Realism', importance: 'Best Value Tradeoff', description: 'Labor rate substantiation against IGCE' },
       ],
-      clinPricingSummary: [
-        { clin: 'CLIN 0001', laborCategory: 'Senior Project Manager / Lead', hours: 1920, rate: '$115.00/hr', total: '$220,800.00' },
-        { clin: 'CLIN 0002', laborCategory: 'Lead Systems / Solutions Engineer', hours: 1920, rate: '$105.00/hr', total: '$201,600.00' },
-        { clin: 'CLIN 0003', laborCategory: 'Senior Technical Specialist', hours: 1920, rate: '$95.00/hr', total: '$182,400.00' },
-        { clin: 'CLIN 0004', laborCategory: 'QA & Compliance Lead', hours: 1920, rate: '$85.00/hr', total: '$163,200.00' },
-        { clin: 'CLIN 0005', laborCategory: 'Operations Support Analyst', hours: 1920, rate: '$65.00/hr', total: '$124,800.00' },
-      ],
+      clinPricingSummary: (opportunity.customLaborItems && opportunity.customLaborItems.length > 0)
+        ? opportunity.customLaborItems.map((ci: any) => ({
+            clin: ci.clinNumber || 'CLIN 0001',
+            laborCategory: ci.roleTitle,
+            hours: ci.hours || 1920,
+            rate: `$${ci.rate?.toFixed ? ci.rate.toFixed(2) : ci.rate}/hr`,
+            total: `$${((ci.rate || 0) * (ci.hours || 1920)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          }))
+        : [
+            { clin: 'CLIN 0001', laborCategory: 'Senior Project Manager / Lead', hours: 1920, rate: '$115.00/hr', total: '$220,800.00' },
+            { clin: 'CLIN 0002', laborCategory: 'Lead Systems / Solutions Engineer', hours: 1920, rate: '$105.00/hr', total: '$201,600.00' },
+            { clin: 'CLIN 0003', laborCategory: 'Senior Technical Specialist', hours: 1920, rate: '$95.00/hr', total: '$182,400.00' },
+            { clin: 'CLIN 0004', laborCategory: 'QA & Compliance Lead', hours: 1920, rate: '$85.00/hr', total: '$163,200.00' },
+            { clin: 'CLIN 0005', laborCategory: 'Operations Support Analyst', hours: 1920, rate: '$65.00/hr', total: '$124,800.00' },
+          ],
     },
+    customLaborCategories: opportunity.customLaborItems || [],
   };
 }
 

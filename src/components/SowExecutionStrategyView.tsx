@@ -26,6 +26,9 @@ import {
   Eye,
   FileSpreadsheet,
   BadgeCheck,
+  Plus,
+  Trash2,
+  DollarSign,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import {
@@ -34,8 +37,10 @@ import {
   SowResourceStrategy,
   SowRequirementSolution,
   OpportunityAttachment,
+  OpportunityCustomLaborItem,
 } from '../types/contract';
 import { extractAllOpportunityAttachmentIntelligence } from '../utils/attachmentDownloader';
+import { AddLaborCategoryModal } from './AddLaborCategoryModal';
 
 interface SowExecutionStrategyViewProps {
   opportunity: SAMOpportunity;
@@ -43,6 +48,9 @@ interface SowExecutionStrategyViewProps {
   initialPlan?: SowResourceStrategy | null;
   onPlanUpdated?: (plan: SowResourceStrategy) => void;
   onViewAttachment?: (att: OpportunityAttachment) => void;
+  customLaborItems?: OpportunityCustomLaborItem[];
+  onAddLaborCategory?: (item: OpportunityCustomLaborItem) => void;
+  onRemoveLaborCategory?: (itemId: string) => void;
 }
 
 export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> = ({
@@ -51,6 +59,9 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
   initialPlan,
   onPlanUpdated,
   onViewAttachment,
+  customLaborItems = [],
+  onAddLaborCategory,
+  onRemoveLaborCategory,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'pathways' | 'resources' | 'proposal_draft'>('pathways');
   const [plan, setPlan] = useState<SowResourceStrategy | null>(initialPlan || null);
@@ -63,6 +74,7 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [showSowSummary, setShowSowSummary] = useState(true);
   const [copiedSow, setCopiedSow] = useState(false);
+  const [isAddLaborModalOpen, setIsAddLaborModalOpen] = useState(false);
 
   // Extract all internal PDF & attachment intelligence
   const attIntel = useMemo(() => extractAllOpportunityAttachmentIntelligence(opportunity), [opportunity]);
@@ -72,6 +84,16 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
     navigator.clipboard.writeText(textToCopy);
     setCopiedSow(true);
     setTimeout(() => setCopiedSow(false), 2000);
+  };
+
+  const handleSyncLaborToDraft = () => {
+    if (!customLaborItems || customLaborItems.length === 0) return;
+    const current = draftText || plan?.proposalVolumeDraft?.fullText || '';
+    if (current.includes('BASIS OF ESTIMATE & LABOR ALLOCATION MATRIX')) return;
+
+    const laborText = `\n\n### 3.4 BASIS OF ESTIMATE & LABOR ALLOCATION MATRIX (WITH LIMIT BENCHMARKS)\nIn strict accordance with Section L instructions and CLIN requirements, the following fully burdened labor categories and rates have been allocated:\n\n${customLaborItems.map((ci) => `* **${ci.clinNumber} - ${ci.roleTitle}**\n  - Allocation: ${ci.hours.toLocaleString()} Hours | Rate: $${ci.rate.toFixed(2)}/hr (Benchmark Limits: $${ci.minRateLimit.toFixed(0)} - $${ci.maxRateLimit.toFixed(0)}/hr)\n  - Clearance: ${ci.clearance} | Performer: ${ci.performerType}\n  - Total Value: $${((ci.rate || 0) * (ci.hours || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).join('\n\n')}\n\n*FAR 52.219-14 Self-Performance Assurance:* Prime small business contractor self-performs greater than 50% of the combined personnel labor costs.`;
+
+    setDraftText(current + laborText);
   };
 
   const FOCUS_OPTIONS = [
@@ -979,33 +1001,99 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
                   Extracted from internal pricing attachments & U.S. Dept of Labor Service Contract Act (SCA) Wage Determination.
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs self-start sm:self-auto">
-                Government Estimated Rates
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddLaborModalOpen(true)}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  title="Search and add labor categories from the federal benchmark database"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Labor Category & Limits</span>
+                </button>
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs self-start sm:self-auto">
+                  {attIntel.clinPricingSummary.length + customLaborItems.length} Positions Configured
+                </span>
+              </div>
             </div>
 
-            {/* CLIN Table */}
+            {/* CLIN Table with Limits */}
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                     <th className="py-2.5 px-3">CLIN #</th>
-                    <th className="py-2.5 px-4">Labor Category</th>
+                    <th className="py-2.5 px-4">Labor Category / Role</th>
+                    <th className="py-2.5 px-3">Benchmark Limits</th>
                     <th className="py-2.5 px-3 text-right">Est. Hours</th>
                     <th className="py-2.5 px-3 text-right">Hourly Rate</th>
                     <th className="py-2.5 px-3 text-right">Total Price</th>
+                    <th className="py-2.5 px-2 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
+                  {/* Default Attachment CLINs */}
                   {attIntel.clinPricingSummary.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/70 transition">
+                    <tr key={`def-${idx}`} className="hover:bg-slate-50/70 transition">
                       <td className="py-2.5 px-3 font-mono font-bold text-blue-700">{item.clin}</td>
                       <td className="py-2.5 px-4 font-semibold text-slate-900">{item.laborCategory}</td>
+                      <td className="py-2.5 px-3 text-[10px] text-slate-500 font-mono">Attachment Baseline</td>
                       <td className="py-2.5 px-3 text-right font-mono text-slate-700">{item.hours.toLocaleString()} hrs</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">{item.rate}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{item.total}</td>
+                      <td className="py-2.5 px-2 text-center text-[10px] text-slate-400">Baseline</td>
                     </tr>
                   ))}
+
+                  {/* Custom Added Labor Items */}
+                  {customLaborItems.map((item) => {
+                    const total = (item.rate || 0) * (item.hours || 0);
+                    return (
+                      <tr key={item.id} className="hover:bg-emerald-50/40 bg-emerald-50/20 transition">
+                        <td className="py-2.5 px-3 font-mono font-bold text-emerald-800 flex items-center gap-1">
+                          <span>{item.clinNumber}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        </td>
+                        <td className="py-2.5 px-4 font-semibold text-slate-900">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span>{item.roleTitle}</span>
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                Custom Added
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 block font-normal">
+                              {item.category} • Clearance: {item.clearance}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[10px] text-slate-700">
+                          Limits: <strong>${item.minRateLimit.toFixed(0)} - ${item.maxRateLimit.toFixed(0)}</strong>/hr
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-800">
+                          {item.hours.toLocaleString()} hrs
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                          ${item.rate.toFixed(2)}/hr
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                          ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          {onRemoveLaborCategory && (
+                            <button
+                              type="button"
+                              onClick={() => onRemoveLaborCategory(item.id)}
+                              className="p-1 text-slate-400 hover:text-red-600 rounded transition cursor-pointer"
+                              title="Remove position"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1057,6 +1145,18 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {customLaborItems && customLaborItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleSyncLaborToDraft}
+                  className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  title="Inject customized labor categories table into proposal text"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Sync Labor Table into Draft</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setIsEditingDraft(!isEditingDraft)}
@@ -1107,6 +1207,21 @@ export const SowExecutionStrategyView: React.FC<SowExecutionStrategyViewProps> =
             )}
           </div>
         </div>
+      )}
+
+      {/* Add Labor Category & Limits Modal */}
+      {isAddLaborModalOpen && (
+        <AddLaborCategoryModal
+          isOpen={isAddLaborModalOpen}
+          onClose={() => setIsAddLaborModalOpen(false)}
+          targetOpportunity={opportunity}
+          onAddLaborCategory={(newItem) => {
+            if (onAddLaborCategory) {
+              onAddLaborCategory(newItem);
+            }
+          }}
+          existingItems={customLaborItems}
+        />
       )}
     </div>
   );

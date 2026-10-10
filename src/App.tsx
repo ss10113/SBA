@@ -33,7 +33,8 @@ import {
   PipelineItem, 
   PipelineStatus,
   BidStrategy,
-  ShipleyProposalArtifact
+  ShipleyProposalArtifact,
+  OpportunityCustomLaborItem
 } from './types/contract';
 import { 
   SAMPLE_PROFILES 
@@ -59,6 +60,7 @@ import { StrategyBusinessPlanModal } from './components/StrategyBusinessPlanModa
 import { BusinessProfileView } from './components/BusinessProfileView';
 import { PipelineTrackerView } from './components/PipelineTrackerView';
 import { MarketInsightsView } from './components/MarketInsightsView';
+import { LaborRatesMatrixView } from './components/LaborRatesMatrixView';
 import { SamValidationModal } from './components/SamValidationModal';
 import { AiConfigModal } from './components/AiConfigModal';
 
@@ -248,7 +250,7 @@ function sanitizeOpportunity(opp: any): SAMOpportunity {
 
 export default function App() {
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights'>('canvass');
+  const [activeTab, setActiveTab] = useState<'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights' | 'labor_rates'>('canvass');
 
   // Business Profiles Presets List (persisted in localStorage)
   const [profiles, setProfiles] = useState<BusinessProfile[]>(() => {
@@ -525,6 +527,72 @@ export default function App() {
   const [selectedOppForDetail, setSelectedOppForDetail] = useState<SAMOpportunity | null>(null);
   const [selectedOppForStrategy, setSelectedOppForStrategy] = useState<SAMOpportunity | null>(null);
   const [strategyForModal, setStrategyForModal] = useState<BidStrategy | undefined>(undefined);
+
+  const handleAddLaborToOpportunity = (oppNoticeId: string, item: OpportunityCustomLaborItem) => {
+    setOpportunities((prev) =>
+      prev.map((opp) => {
+        if (opp.noticeId === oppNoticeId) {
+          const existing = opp.customLaborItems || [];
+          return {
+            ...opp,
+            customLaborItems: [...existing, item],
+          };
+        }
+        return opp;
+      })
+    );
+
+    setSelectedOppForDetail((prev) => {
+      if (prev && prev.noticeId === oppNoticeId) {
+        const existing = prev.customLaborItems || [];
+        return {
+          ...prev,
+          customLaborItems: [...existing, item],
+        };
+      }
+      return prev;
+    });
+
+    setPipeline((prev) =>
+      prev.map((p) => {
+        if (p.opportunity.noticeId === oppNoticeId) {
+          const existing = p.opportunity.customLaborItems || [];
+          return {
+            ...p,
+            opportunity: {
+              ...p.opportunity,
+              customLaborItems: [...existing, item],
+            },
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleRemoveLaborFromOpportunity = (oppNoticeId: string, itemId: string) => {
+    setOpportunities((prev) =>
+      prev.map((opp) => {
+        if (opp.noticeId === oppNoticeId) {
+          return {
+            ...opp,
+            customLaborItems: (opp.customLaborItems || []).filter((i) => i.id !== itemId),
+          };
+        }
+        return opp;
+      })
+    );
+
+    setSelectedOppForDetail((prev) => {
+      if (prev && prev.noticeId === oppNoticeId) {
+        return {
+          ...prev,
+          customLaborItems: (prev.customLaborItems || []).filter((i) => i.id !== itemId),
+        };
+      }
+      return prev;
+    });
+  };
 
   // Fetch current AI Agent & Model configuration
   const fetchAiConfig = () => {
@@ -1404,6 +1472,17 @@ export default function App() {
 
         {/* VIEW 4: Market Insights & Compliance */}
         {activeTab === 'insights' && <MarketInsightsView />}
+
+        {/* VIEW 5: Federal Labor Categories & Wage Determination Limits Matrix */}
+        {activeTab === 'labor_rates' && (
+          <LaborRatesMatrixView
+            opportunities={opportunities}
+            currentProfile={currentProfile}
+            activeOpportunity={selectedOppForDetail || pipeline[0]?.opportunity || opportunities[0]}
+            onOpenOpportunityDetail={(opp) => setSelectedOppForDetail(opp)}
+            onAddLaborToOpportunity={handleAddLaborToOpportunity}
+          />
+        )}
       </main>
 
       {/* Modals */}
@@ -1422,6 +1501,16 @@ export default function App() {
             ? pipeline.some((p) => p.opportunity.noticeId === selectedOppForDetail.noticeId)
             : false
         }
+        onAddLaborCategory={(item) => {
+          if (selectedOppForDetail) {
+            handleAddLaborToOpportunity(selectedOppForDetail.noticeId, item);
+          }
+        }}
+        onRemoveLaborCategory={(itemId) => {
+          if (selectedOppForDetail) {
+            handleRemoveLaborFromOpportunity(selectedOppForDetail.noticeId, itemId);
+          }
+        }}
       />
 
       <StrategyBusinessPlanModal

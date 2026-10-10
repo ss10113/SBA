@@ -16,14 +16,15 @@ import {
   Eye,
   EyeOff,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  DollarSign
 } from 'lucide-react';
 import { BusinessProfile } from '../types/contract';
 import { SAMPLE_PROFILES } from '../data/samCuratedData';
 
 interface HeaderProps {
-  activeTab: 'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights';
-  setActiveTab: (tab: 'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights') => void;
+  activeTab: 'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights' | 'labor_rates';
+  setActiveTab: (tab: 'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights' | 'labor_rates') => void;
   currentProfile: BusinessProfile;
   profiles: BusinessProfile[];
   onSelectProfile: (profile: BusinessProfile) => void;
@@ -317,6 +318,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <BarChart3 className="w-4 h-4" />
             <span>SBA Insights</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('labor_rates')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'labor_rates'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 text-emerald-400" />
+            <span>Labor Rates & CLINs</span>
           </button>
 
           <button

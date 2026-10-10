@@ -31,8 +31,18 @@ import {
   RefreshCw,
   FileCheck,
   BadgeCheck,
+  DollarSign,
+  Plus,
+  Trash2,
 } from 'lucide-react';
-import { SAMOpportunity, BusinessProfile, FitScore, OpportunityAttachment, SowResourceStrategy } from '../types/contract';
+import {
+  SAMOpportunity,
+  BusinessProfile,
+  FitScore,
+  OpportunityAttachment,
+  SowResourceStrategy,
+  OpportunityCustomLaborItem,
+} from '../types/contract';
 import { calculateFitScore } from '../utils/fitEngine';
 import { getSafeSamGovUrl, isDirectSamGovNoticeId, getSamSearchUrl, extractSamNoticeUUID } from '../utils/samUrlHelper';
 import { getNaicsDefinition } from '../data/naicsDatabase';
@@ -44,6 +54,7 @@ import {
 } from '../utils/attachmentDownloader';
 import { SowExecutionStrategyView } from './SowExecutionStrategyView';
 import { NativeAttachmentViewer } from './NativeAttachmentViewer';
+import { AddLaborCategoryModal } from './AddLaborCategoryModal';
 
 interface OpportunityDetailModalProps {
   opportunity: SAMOpportunity | null;
@@ -53,6 +64,8 @@ interface OpportunityDetailModalProps {
   onTogglePipeline: (opp: SAMOpportunity) => void;
   onValidate?: (opp: SAMOpportunity) => void;
   isInPipeline: boolean;
+  onAddLaborCategory?: (item: OpportunityCustomLaborItem) => void;
+  onRemoveLaborCategory?: (itemId: string) => void;
 }
 
 export const OpportunityDetailModal: React.FC<OpportunityDetailModalProps> = ({
@@ -63,6 +76,8 @@ export const OpportunityDetailModal: React.FC<OpportunityDetailModalProps> = ({
   onTogglePipeline,
   onValidate,
   isInPipeline,
+  onAddLaborCategory,
+  onRemoveLaborCategory,
 }) => {
   const [previewAttachment, setPreviewAttachment] = useState<OpportunityAttachment | null>(null);
   const [downloadedIds, setDownloadedIds] = useState<Record<string, boolean>>({});
@@ -80,6 +95,38 @@ export const OpportunityDetailModal: React.FC<OpportunityDetailModalProps> = ({
   const [deepAiAnalysis, setDeepAiAnalysis] = useState<any>(null);
   const [loadingDeepAi, setLoadingDeepAi] = useState(false);
   const [activeIntelTab, setActiveIntelTab] = useState<'pws' | 'section_l_m' | 'cdrl' | 'pricing'>('pws');
+  const [isAddLaborModalOpen, setIsAddLaborModalOpen] = useState(false);
+  const [localCustomLabor, setLocalCustomLabor] = useState<OpportunityCustomLaborItem[]>(
+    opportunity?.customLaborItems || []
+  );
+
+  React.useEffect(() => {
+    if (opportunity) {
+      setLocalCustomLabor(opportunity.customLaborItems || []);
+    }
+  }, [opportunity]);
+
+  const handleAddCustomLabor = (item: OpportunityCustomLaborItem) => {
+    const updated = [...localCustomLabor, item];
+    setLocalCustomLabor(updated);
+    if (opportunity) {
+      opportunity.customLaborItems = updated;
+    }
+    if (onAddLaborCategory) {
+      onAddLaborCategory(item);
+    }
+  };
+
+  const handleRemoveCustomLabor = (itemId: string) => {
+    const updated = localCustomLabor.filter((i) => i.id !== itemId);
+    setLocalCustomLabor(updated);
+    if (opportunity) {
+      opportunity.customLaborItems = updated;
+    }
+    if (onRemoveLaborCategory) {
+      onRemoveLaborCategory(itemId);
+    }
+  };
 
   const attIntel = useMemo(() => {
     return opportunity ? extractAllOpportunityAttachmentIntelligence(opportunity) : null;
@@ -341,6 +388,9 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
               initialPlan={sowPlan}
               onPlanUpdated={setSowPlan}
               onViewAttachment={(att) => setPreviewAttachment(att)}
+              customLaborItems={localCustomLabor}
+              onAddLaborCategory={handleAddCustomLabor}
+              onRemoveLaborCategory={handleRemoveCustomLabor}
             />
           ) : (
             <>
@@ -1022,58 +1072,239 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
 
               {/* Sub-tab 4: Pricing CLINs & SCA Wages */}
               {activeIntelTab === 'pricing' && (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs">
+                <div className="space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs">
                     <div>
-                      <strong className="text-emerald-950 block">Contract Line Item Numbers (CLINs) & SCA Wage Determination:</strong>
-                      <span className="text-slate-600 text-[11px]">
-                        Extracted pricing template and Dept of Labor wage determination rates for {opportunity.placeOfPerformance.city}, {opportunity.placeOfPerformance.state}.
+                      <div className="flex items-center gap-2">
+                        <strong className="text-emerald-950 font-bold text-xs sm:text-sm">
+                          Contract Line Item Numbers (CLINs) & SCA Wage Determination
+                        </strong>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {attIntel.clinPricingSummary.length + localCustomLabor.length} Positions Configured
+                        </span>
+                      </div>
+                      <span className="text-slate-600 text-[11px] block mt-0.5">
+                        Benchmarked against GSA CALC 25th-90th percentiles and Department of Labor Service Contract Act (SCA) Wage Determination for {opportunity.placeOfPerformance.city}, {opportunity.placeOfPerformance.state}.
                       </span>
                     </div>
-                    {(() => {
-                      const pricingAtt = opportunity.attachments?.find(
-                        (a) => a.name.toLowerCase().includes('rate') || a.name.toLowerCase().includes('pricing') || a.name.toLowerCase().includes('xlsx')
-                      );
-                      if (pricingAtt) {
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewAttachment(pricingAtt)}
-                            className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer self-start sm:self-auto shrink-0"
-                          >
-                            <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
-                            <span>View Spreadsheet in Native Grid</span>
-                          </button>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddLaborModalOpen(true)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                        title="Search benchmark database and add labor categories with min/max rate limits"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Labor Category from Matrix</span>
+                      </button>
+
+                      {(() => {
+                        const pricingAtt = opportunity.attachments?.find(
+                          (a) => a.name.toLowerCase().includes('rate') || a.name.toLowerCase().includes('pricing') || a.name.toLowerCase().includes('xlsx')
                         );
-                      }
-                      return null;
-                    })()}
+                        if (pricingAtt) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewAttachment(pricingAtt)}
+                              className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer self-start sm:self-auto shrink-0"
+                            >
+                              <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                              <span>View Pricing Spreadsheet</span>
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                  {/* CLIN Table with Benchmarked Limits & Custom Items */}
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
-                        <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
+                        <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
                           <th className="py-2.5 px-3">CLIN #</th>
-                          <th className="py-2.5 px-4">Labor Category</th>
+                          <th className="py-2.5 px-4">Labor Category / Position</th>
+                          <th className="py-2.5 px-3">Rate Benchmark & Limits</th>
                           <th className="py-2.5 px-3 text-right">Est. Hours</th>
-                          <th className="py-2.5 px-3 text-right">Hourly Rate</th>
+                          <th className="py-2.5 px-3 text-right">Billable Rate</th>
                           <th className="py-2.5 px-3 text-right">Total Price</th>
+                          <th className="py-2.5 px-3 text-center">Performer</th>
+                          <th className="py-2.5 px-2 text-center">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
+                        {/* 1. Baseline Extracted CLINs from Attachment */}
                         {attIntel.clinPricingSummary.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/70 transition">
+                          <tr key={`base-${idx}`} className="hover:bg-slate-50/70 transition">
                             <td className="py-2.5 px-3 font-mono font-bold text-blue-700">{item.clin}</td>
-                            <td className="py-2.5 px-4 font-semibold text-slate-900">{item.laborCategory}</td>
+                            <td className="py-2.5 px-4 font-semibold text-slate-900">
+                              <span>{item.laborCategory}</span>
+                            </td>
+                            <td className="py-2.5 px-3 text-[11px] text-slate-500 font-mono">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px]">
+                                Solicitation Attachment Rate
+                              </span>
+                            </td>
                             <td className="py-2.5 px-3 text-right font-mono text-slate-700">{item.hours.toLocaleString()} hrs</td>
                             <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">{item.rate}</td>
                             <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{item.total}</td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                                Prime
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-center text-[10px] text-slate-400">
+                              Default
+                            </td>
                           </tr>
                         ))}
+
+                        {/* 2. User-Added / Customized Labor Positions */}
+                        {localCustomLabor.map((item) => {
+                          const totalVal = (item.rate || 0) * (item.hours || 0);
+                          const isPrime = item.performerType === 'Prime Contractor';
+                          return (
+                            <tr key={item.id} className="hover:bg-emerald-50/40 bg-emerald-50/20 transition">
+                              <td className="py-2.5 px-3 font-mono font-bold text-emerald-800 flex items-center gap-1">
+                                <span>{item.clinNumber}</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              </td>
+                              <td className="py-2.5 px-4 font-semibold text-slate-900">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{item.roleTitle}</span>
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      Custom Added
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 block">
+                                    {item.category} • Clearance: {item.clearance}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="space-y-0.5">
+                                  <span className="font-mono text-[10px] text-slate-700 block">
+                                    Limits: <strong>${item.minRateLimit.toFixed(0)} - ${item.maxRateLimit.toFixed(0)}</strong>/hr
+                                  </span>
+                                  <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="bg-emerald-500 h-full w-full"></div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-800 font-semibold">
+                                {item.hours.toLocaleString()} hrs
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700">
+                                ${item.rate.toFixed(2)}/hr
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                                ${totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  isPrime
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                }`}>
+                                  {isPrime ? 'Prime Small Business' : 'Teaming Sub'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCustomLabor(item.id)}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
+                                  title="Remove this position from solicitation"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Summary Pricing & FAR 52.219-14 Work-Share Rollup Box */}
+                  {(() => {
+                    // Compute totals across baseline + custom
+                    let totalHours = attIntel.clinPricingSummary.reduce((acc, c) => acc + c.hours, 0) +
+                      localCustomLabor.reduce((acc, c) => acc + (c.hours || 0), 0);
+
+                    let baseCost = attIntel.clinPricingSummary.reduce((acc, c) => {
+                      const num = parseFloat(c.total.replace(/[^0-9.]/g, '')) || 0;
+                      return acc + num;
+                    }, 0);
+
+                    let customCost = localCustomLabor.reduce((acc, c) => {
+                      return acc + ((c.rate || 0) * (c.hours || 0));
+                    }, 0);
+
+                    let grandTotal = baseCost + customCost;
+
+                    let primeLaborCost = baseCost + localCustomLabor.filter(c => c.performerType === 'Prime Contractor').reduce((acc, c) => acc + ((c.rate || 0) * (c.hours || 0)), 0);
+                    let subLaborCost = localCustomLabor.filter(c => c.performerType !== 'Prime Contractor').reduce((acc, c) => acc + ((c.rate || 0) * (c.hours || 0)), 0);
+
+                    let primePercentage = grandTotal > 0 ? Math.round((primeLaborCost / grandTotal) * 100) : 100;
+                    let isFarCompliant = primePercentage >= 50;
+
+                    return (
+                      <div className="bg-slate-900 text-white p-4 rounded-xl shadow-xs space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
+                              Total Contract Estimated CLIN Ceiling (BOE):
+                            </span>
+                            <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
+                              ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                            <span className="text-[11px] text-slate-300">
+                              Based on {totalHours.toLocaleString()} total labor hours across {attIntel.clinPricingSummary.length + localCustomLabor.length} CLIN items
+                            </span>
+                          </div>
+
+                          {/* FAR 52.219-14 Work-share status */}
+                          <div className="text-left sm:text-right space-y-1">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
+                              FAR 52.219-14 Small Business Work-Share:
+                            </span>
+                            <div className="flex items-center gap-2 justify-start sm:justify-end">
+                              <span className="font-mono text-base font-bold text-white">
+                                Prime: {primePercentage}% | Sub: {100 - primePercentage}%
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isFarCompliant
+                                  ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/40'
+                                  : 'bg-red-500/30 text-red-300 border border-red-400/40'
+                              }`}>
+                                {isFarCompliant ? '✓ 50% Rule Compliant' : '⚠ Non-Compliant (<50%)'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <span className="text-[11px] text-slate-300">
+                            Custom labor categories configured here are automatically ingested into the SOW execution strategy and technical proposal generation.
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => setActiveModalTab('sow_strategy')}
+                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>View in SOW Strategy & Proposal Draft →</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {attIntel.wageDetermination && (
                     <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs space-y-1.5">
@@ -1503,6 +1734,17 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
           opportunity={opportunity}
           onClose={() => setPreviewAttachment(null)}
           onDownloadSingle={handleDownloadSingle}
+        />
+      )}
+
+      {/* ADD LABOR CATEGORY & RATE LIMITS MODAL */}
+      {isAddLaborModalOpen && opportunity && (
+        <AddLaborCategoryModal
+          isOpen={isAddLaborModalOpen}
+          onClose={() => setIsAddLaborModalOpen(false)}
+          targetOpportunity={opportunity}
+          onAddLaborCategory={handleAddCustomLabor}
+          existingItems={localCustomLabor}
         />
       )}
     </div>
