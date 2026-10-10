@@ -222,7 +222,7 @@ NODE_ENV=production
 AI_PROVIDER=gemini
 
 # Google Gemini API Key (Get free key at: https://aistudio.google.com/apikey)
-GEMINI_API_KEY=AQ.Ab8RN6KL6vnCySziah5Ikod2_xte5ijqzHx8FAmqYQpoUbJdhA
+GEMINI_API_KEY=ADD GEMINI KEY HERE
 
 # Selected AI Model
 # For Gemini: 'gemini-3.8-flash', 'gemini-3.1-pro-preview'
