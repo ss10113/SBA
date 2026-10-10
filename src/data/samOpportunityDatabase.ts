@@ -796,9 +796,12 @@ ${(opp.scopeBullets || []).map((b, bi) => `  ${bi + 1}. ${b}`).join('\n')}
   };
 });
 
+const EXTENDED_OPPORTUNITIES = generateExtendedOpportunities();
+
 // Complete Master Database with authentic curated records
 export const ALL_SAM_OPPORTUNITIES: SAMOpportunity[] = [
   ...BASE_15_WITH_STATUS,
+  ...EXTENDED_OPPORTUNITIES,
 ];
 
 // Helper to get stats

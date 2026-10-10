@@ -1124,7 +1124,8 @@ app.post('/api/sam/opportunities', async (req, res) => {
         if (noticeType && NOTICE_TYPE_CODE_MAP[noticeType]) {
           p.append('ptype', NOTICE_TYPE_CODE_MAP[noticeType]);
         } else {
-          p.append('ptype', 'o,k,p,r');
+          // Include solicitations (o), combined synopsis (k), presolicitation (p), sources sought (r), special notices (s), awards (a)
+          p.append('ptype', 'o,k,p,r,s,a');
         }
 
         if (naicsCode) p.append('ncode', String(naicsCode).trim());
@@ -1162,9 +1163,14 @@ app.post('/api/sam/opportunities', async (req, res) => {
 
       let collectedRawOpps: any[] = [];
 
+      // Check if searchQuery appears to be a specific solicitation number
+      const isLikelySolNum = (query: string) => {
+        const cleaned = query.trim().replace(/[\s-]/g, '');
+        return /[0-9]/.test(cleaned) && /[a-zA-Z]/.test(cleaned) && cleaned.length >= 5;
+      };
+
       // Handle specific agency filter vs full multi-agency sync
       if (agency && agency !== 'All Federal Organizations') {
-        const params = buildBaseParams();
         const needle = agency.trim().toLowerCase();
         const matchedOrg = FEDERAL_ORGANIZATIONS.find(
           (o) =>
@@ -1173,29 +1179,64 @@ app.post('/api/sam/opportunities', async (req, res) => {
             o.acronym.toLowerCase() === needle ||
             o.code.toLowerCase() === needle
         );
-        if (matchedOrg && matchedOrg.code) {
-          params.append('organizationCode', matchedOrg.code);
-        }
+        const orgCode = matchedOrg?.code;
+
         if (searchQuery) {
           const trimmed = searchQuery.trim();
-          params.append('solnum', trimmed);
-          params.append('title', trimmed);
-        }
-        const samUrl = `${samApiBase}?${params.toString()}`;
-        collectedRawOpps = await fetchSamUrl(samUrl);
-      } else if (searchQuery) {
-        // Targeted search query across solnum, title, keyword
-        const trimmed = searchQuery.trim();
-        const p1 = buildBaseParams();
-        p1.append('solnum', trimmed);
-        const p2 = buildBaseParams();
-        p2.append('title', trimmed);
+          const queries: Promise<any[]>[] = [];
 
-        const [r1, r2] = await Promise.all([
-          fetchSamUrl(`${samApiBase}?${p1.toString()}`),
-          fetchSamUrl(`${samApiBase}?${p2.toString()}`),
-        ]);
-        collectedRawOpps = [...r1, ...r2];
+          // Query 1: full-text keyword
+          const p1 = buildBaseParams();
+          if (orgCode) p1.append('organizationCode', orgCode);
+          p1.append('q', trimmed);
+          queries.push(fetchSamUrl(`${samApiBase}?${p1.toString()}`));
+
+          // Query 2: title search
+          const p2 = buildBaseParams();
+          if (orgCode) p2.append('organizationCode', orgCode);
+          p2.append('title', trimmed);
+          queries.push(fetchSamUrl(`${samApiBase}?${p2.toString()}`));
+
+          // Query 3: solicitation number search if alphanumeric pattern
+          if (isLikelySolNum(trimmed)) {
+            const p3 = buildBaseParams();
+            if (orgCode) p3.append('organizationCode', orgCode);
+            p3.append('solnum', trimmed);
+            queries.push(fetchSamUrl(`${samApiBase}?${p3.toString()}`));
+          }
+
+          const results = await Promise.all(queries);
+          collectedRawOpps = results.flat();
+        } else {
+          const params = buildBaseParams();
+          if (orgCode) params.append('organizationCode', orgCode);
+          const samUrl = `${samApiBase}?${params.toString()}`;
+          collectedRawOpps = await fetchSamUrl(samUrl);
+        }
+      } else if (searchQuery) {
+        // Multi-angle search across full-text q, title, and solnum (avoiding restrictive boolean AND)
+        const trimmed = searchQuery.trim();
+        const queries: Promise<any[]>[] = [];
+
+        // Full-text keyword search (same parameter used by sam.gov web search)
+        const pQ = buildBaseParams();
+        pQ.append('q', trimmed);
+        queries.push(fetchSamUrl(`${samApiBase}?${pQ.toString()}`));
+
+        // Title search
+        const pTitle = buildBaseParams();
+        pTitle.append('title', trimmed);
+        queries.push(fetchSamUrl(`${samApiBase}?${pTitle.toString()}`));
+
+        // Solnum search if the term looks like a solicitation number
+        if (isLikelySolNum(trimmed)) {
+          const pSol = buildBaseParams();
+          pSol.append('solnum', trimmed);
+          queries.push(fetchSamUrl(`${samApiBase}?${pSol.toString()}`));
+        }
+
+        const results = await Promise.all(queries);
+        collectedRawOpps = results.flat();
       } else {
         // Multi-agency query to ensure authentic representation across defense branches and civilian agencies
         const pGeneral = buildBaseParams();

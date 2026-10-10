@@ -1208,27 +1208,27 @@ export default function App() {
                 </div>
                 <div>
                   <div className="font-bold text-slate-900 text-sm flex flex-wrap items-center gap-2">
-                    <span>SAM.gov Database Ledger: {databaseStats.total} Total Records</span>
-                    <span className="text-[11px] font-normal text-slate-500 font-sans">
-                      (All active, inactive, and awarded opportunities)
+                    <span>SAM.gov Database Ledger: {databaseStats.total} Records</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                      🌐 Live SAM.gov Web Index: ~27,000+ Active Nationwide
                     </span>
                   </div>
                   <p className="text-slate-600 mt-1 leading-relaxed">
-                    The database contains <strong className="text-slate-900 font-mono font-bold">{databaseStats.total}</strong> authentic federal opportunities across all departments: 
-                    <strong className="text-emerald-700 font-semibold font-mono"> {databaseStats.active} Active Solicitations</strong> currently open for bidding, 
-                    <strong className="text-slate-700 font-semibold font-mono"> {databaseStats.inactive} Inactive / Closed notices</strong> whose deadlines passed, and 
-                    <strong className="text-amber-800 font-semibold font-mono"> {databaseStats.awarded} Historical Awarded contracts</strong>.
+                    Showing <strong className="text-slate-900 font-mono font-bold">{databaseStats.total}</strong> authentic federal solicitations across defense and civilian departments: 
+                    <strong className="text-emerald-700 font-semibold font-mono"> {databaseStats.active} Active Solicitations</strong> open for bidding, 
+                    <strong className="text-slate-700 font-semibold font-mono"> {databaseStats.inactive} Closed notices</strong>, and 
+                    <strong className="text-amber-800 font-semibold font-mono"> {databaseStats.awarded} Awarded contracts</strong>.
                   </p>
                   <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-600 font-medium">
-                    <span>Intuitive Scrolling & Browsing:</span>
+                    <span className="text-slate-500 font-normal">SAM.gov Search Sync:</span>
+                    <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-blue-700 font-semibold">
+                      ⚡ Real-Time API Search (q, title, solnum)
+                    </span>
                     <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700 font-semibold">
-                      📄 Page Navigation ({pageSize} per page)
+                      📄 Page Navigation ({pageSize}/page)
                     </span>
                     <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700 font-semibold">
                       📜 Continuous Infinite Scroll
-                    </span>
-                    <span className="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700 font-semibold">
-                      ⚡ Quick Status Filters
                     </span>
                   </div>
                 </div>
