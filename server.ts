@@ -769,14 +769,17 @@ ${scopeBullets.map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
   };
 }
 
+let runtimeSamApiKey = process.env.SAM_GOV_API_KEY || '';
+let runtimeSamEnv = process.env.SAM_GOV_ENV || 'production';
+
 // Endpoint to check SAM.gov API integration status & available environments
 app.get('/api/sam/status', (req, res) => {
-  const hasLiveApiKey = Boolean(process.env.SAM_GOV_API_KEY && process.env.SAM_GOV_API_KEY !== 'MY_SAM_GOV_API_KEY');
-  const configuredEnv = (process.env.SAM_GOV_ENV || 'alpha').toLowerCase();
+  const activeKey = (runtimeSamApiKey || process.env.SAM_GOV_API_KEY || '').trim();
+  const hasLiveApiKey = Boolean(activeKey && activeKey !== 'MY_SAM_GOV_API_KEY');
+  const configuredEnv = (runtimeSamEnv || process.env.SAM_GOV_ENV || 'production').toLowerCase();
   const isAlpha = configuredEnv === 'alpha' || configuredEnv === 'test';
-  const rawKey = process.env.SAM_GOV_API_KEY || '';
   const maskedKey = hasLiveApiKey 
-    ? (rawKey.length > 8 ? `${rawKey.substring(0, 4)}...${rawKey.substring(rawKey.length - 4)}` : '****')
+    ? (activeKey.length > 8 ? `${activeKey.substring(0, 4)}...${activeKey.substring(activeKey.length - 4)}` : '****')
     : 'Not configured';
 
   res.json({
@@ -793,16 +796,42 @@ app.get('/api/sam/status', (req, res) => {
       ? (isAlpha 
           ? 'Configured for SAM.gov Alpha Test API (api-alpha.sam.gov) for testing stage'
           : 'Configured for official SAM.gov Production API (api.sam.gov)')
-      : 'Using active federal solicitations repository. Set SAM_GOV_API_KEY in environment to stream live from SAM.gov APIs.',
+      : 'Using active federal solicitations repository. Set SAM_GOV_API_KEY in environment or input key in Workbench to stream live from SAM.gov APIs.',
+  });
+});
+
+// Endpoint to save or update runtime SAM/SBA API key & environment
+app.post('/api/sam/config', (req, res) => {
+  const { apiKey, targetEnv } = req.body || {};
+  if (apiKey !== undefined) {
+    runtimeSamApiKey = (apiKey || '').trim();
+    process.env.SAM_GOV_API_KEY = runtimeSamApiKey;
+  }
+  if (targetEnv) {
+    runtimeSamEnv = targetEnv.toLowerCase();
+    process.env.SAM_GOV_ENV = runtimeSamEnv;
+  }
+  const activeKey = (runtimeSamApiKey || process.env.SAM_GOV_API_KEY || '').trim();
+  const hasLiveApiKey = Boolean(activeKey && activeKey !== 'MY_SAM_GOV_API_KEY');
+  const maskedKey = hasLiveApiKey
+    ? (activeKey.length > 8 ? `${activeKey.substring(0, 4)}...${activeKey.substring(activeKey.length - 4)}` : '****')
+    : 'Not configured';
+
+  return res.json({
+    success: true,
+    hasLiveApiKey,
+    maskedKey,
+    activeEnv: runtimeSamEnv,
+    message: hasLiveApiKey ? 'SAM.gov / SBA API key updated and active.' : 'API key cleared. Reverting to curated dataset.',
   });
 });
 
 // Endpoint to actively verify and test an API key with GSA
 app.post('/api/sam/verify-key', async (req, res) => {
   const customKey = req.body?.apiKey;
-  const envKey = process.env.SAM_GOV_API_KEY;
+  const envKey = runtimeSamApiKey || process.env.SAM_GOV_API_KEY;
   const keyToTest = (customKey || envKey || '').trim();
-  const targetEnv = (req.body?.targetEnv || process.env.SAM_GOV_ENV || 'alpha').toLowerCase();
+  const targetEnv = (req.body?.targetEnv || runtimeSamEnv || process.env.SAM_GOV_ENV || 'production').toLowerCase();
   const isAlpha = targetEnv === 'alpha' || targetEnv === 'test';
   const endpoint = isAlpha ? SAM_ALPHA_API_URL : SAM_PROD_API_URL;
 
@@ -927,8 +956,8 @@ app.post('/api/sam/validate-solicitation', async (req, res) => {
   const solNum = String(solicitationNumber || '').trim();
   const nId = String(noticeId || '').trim();
 
-  const apiKey = process.env.SAM_GOV_API_KEY;
-  const isAlpha = (targetEnv || process.env.SAM_GOV_ENV || 'production').toLowerCase() === 'alpha';
+  const apiKey = (runtimeSamApiKey || process.env.SAM_GOV_API_KEY || '').trim();
+  const isAlpha = (targetEnv || runtimeSamEnv || process.env.SAM_GOV_ENV || 'production').toLowerCase() === 'alpha';
   const endpoint = isAlpha ? SAM_ALPHA_API_URL : SAM_PROD_API_URL;
 
   const hexMatch = nId.match(/([a-f0-9]{32})/i) || solNum.match(/([a-f0-9]{32})/i);
@@ -1063,8 +1092,8 @@ app.post('/api/sam/opportunities', async (req, res) => {
       offset = 0 
     } = req.body;
 
-    const apiKey = process.env.SAM_GOV_API_KEY;
-    const requestedEnv = targetEnv || process.env.SAM_GOV_ENV || 'alpha';
+    const apiKey = (runtimeSamApiKey || process.env.SAM_GOV_API_KEY || '').trim();
+    const requestedEnv = targetEnv || runtimeSamEnv || process.env.SAM_GOV_ENV || 'production';
     const isTestStage = requestedEnv === 'alpha' || requestedEnv === 'test';
     const samApiBase = isTestStage ? SAM_ALPHA_API_URL : SAM_PROD_API_URL;
     let authFailureNotice: string | null = null;

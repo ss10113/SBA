@@ -11,7 +11,12 @@ import {
   Server,
   Zap,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Key,
+  Eye,
+  EyeOff,
+  Save,
+  CheckCircle2
 } from 'lucide-react';
 import { BusinessProfile } from '../types/contract';
 import { SAMPLE_PROFILES } from '../data/samCuratedData';
@@ -65,6 +70,40 @@ export const Header: React.FC<HeaderProps> = ({
   const [isApiModalMaximized, setIsApiModalMaximized] = React.useState(false);
   const [pingTesting, setPingTesting] = React.useState(false);
   const [pingResult, setPingResult] = React.useState<any>(null);
+  const [samKeyInput, setSamKeyInput] = React.useState('');
+  const [showSamKey, setShowSamKey] = React.useState(false);
+  const [savingSamKey, setSavingSamKey] = React.useState(false);
+  const [samKeyFeedback, setSamKeyFeedback] = React.useState<{ text: string; ok: boolean } | null>(null);
+
+  const handleSaveSamKey = async () => {
+    setSavingSamKey(true);
+    setSamKeyFeedback(null);
+    try {
+      const res = await fetch('/api/sam/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: samKeyInput,
+          targetEnv: activeEnv,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSamKeyFeedback({
+          text: samKeyInput.trim() ? 'SAM.gov / SBA API Key saved and activated successfully!' : 'API key cleared. System reverted to curated feed.',
+          ok: true,
+        });
+        setSamKeyInput('');
+        if (onRefreshFeed) onRefreshFeed();
+      } else {
+        setSamKeyFeedback({ text: data.message || 'Failed to update key', ok: false });
+      }
+    } catch (e: any) {
+      setSamKeyFeedback({ text: e.message || 'Network error updating key', ok: false });
+    } finally {
+      setSavingSamKey(false);
+    }
+  };
 
   const handleTestPing = async () => {
     setPingTesting(true);
@@ -149,6 +188,16 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </button>
           )}
+          <button
+            onClick={() => setApiInfoModalOpen(true)}
+            className="bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 hover:text-white border border-amber-600/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
+            title="Configure SAM.gov / SBA API Key and Testing Environment"
+          >
+            <Key className="w-3 h-3 text-amber-400" />
+            <span>
+              SBA API Key: <strong className={hasLiveApiKey ? 'text-emerald-400' : 'text-amber-300'}>{hasLiveApiKey ? 'Active' : 'Input Key'}</strong>
+            </span>
+          </button>
           {onOpenValidationModal && (
             <button
               onClick={onOpenValidationModal}
@@ -307,6 +356,27 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* SAM.gov & SBA API Key Config button */}
+          <button
+            type="button"
+            onClick={() => setApiInfoModalOpen(true)}
+            className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-800 border border-amber-500/50 hover:border-amber-400 px-3 py-1.5 rounded-lg text-left text-xs transition cursor-pointer text-slate-200"
+            title="Configure SAM.gov / SBA API Key and Environments"
+          >
+            <div className="w-7 h-7 rounded-md bg-amber-950/70 border border-amber-500/40 text-amber-300 flex items-center justify-center font-bold text-xs">
+              <Key className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="max-w-[130px]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-white">SBA API Key</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${hasLiveApiKey ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+              </div>
+              <p className="text-[10px] text-amber-300 font-mono truncate">
+                {hasLiveApiKey ? 'Connected' : 'Input Key'}
+              </p>
+            </div>
+          </button>
+
           {/* Profile Switcher dropdown on desktop */}
           <div className="relative">
             <button
@@ -425,6 +495,107 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+
+            {/* SBA / SAM.gov API Key Configuration Card */}
+            <div className="bg-slate-800/95 rounded-xl p-4 sm:p-5 border border-amber-500/40 shadow-xl space-y-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span>SBA / SAM.gov Opportunities API Key</span>
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${hasLiveApiKey ? 'bg-emerald-950 text-emerald-300 border-emerald-600/70' : 'bg-amber-950 text-amber-300 border-amber-600/70'}`}>
+                        {hasLiveApiKey ? '✓ KEY CONNECTED' : 'KEY REQUIRED FOR LIVE STREAM'}
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Input your official SAM.gov API Key to query live procurement notices directly from GSA and federal agencies.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Input, Save & Clear Buttons */}
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showSamKey ? 'text' : 'password'}
+                      value={samKeyInput}
+                      onChange={(e) => setSamKeyInput(e.target.value)}
+                      placeholder={hasLiveApiKey ? '•••••••••••••••• (Key active - type new key to replace)' : 'Enter your SAM.gov or SBA API key here...'}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSamKey(!showSamKey)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                      title={showSamKey ? 'Hide key' : 'Show key'}
+                    >
+                      {showSamKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveSamKey}
+                      disabled={savingSamKey}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{savingSamKey ? 'Saving...' : 'Save API Key'}</span>
+                    </button>
+
+                    {hasLiveApiKey && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSamKeyInput('');
+                          handleSaveSamKey();
+                        }}
+                        className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+                        title="Disconnect API key and use active curated feed"
+                      >
+                        Disconnect
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {samKeyFeedback && (
+                  <div className={`p-2.5 rounded-lg text-xs flex items-center gap-2 font-medium ${samKeyFeedback.ok ? 'bg-emerald-950/70 border border-emerald-600/70 text-emerald-300' : 'bg-rose-950/70 border border-rose-600/70 text-rose-300'}`}>
+                    {samKeyFeedback.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <span className="text-rose-400 font-bold shrink-0">✕</span>}
+                    <span>{samKeyFeedback.text}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-1">
+                  <span>
+                    Need a key? Request a free key at{' '}
+                    <a
+                      href="https://sam.gov/content/developer-hub"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-amber-400 hover:underline font-semibold"
+                    >
+                      SAM.gov Developer Hub ↗
+                    </a>{' '}
+                    or test on{' '}
+                    <a
+                      href="https://alpha.sam.gov"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-amber-400 hover:underline font-semibold"
+                    >
+                      alpha.sam.gov ↗
+                    </a>
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Environment Selector (Alpha Test vs Production vs Curated) */}
             <div className="bg-slate-800/90 rounded-xl p-4 border border-slate-700 space-y-3">

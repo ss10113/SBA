@@ -21,7 +21,9 @@ import {
   FileCode,
   Download,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface AiConfigModalProps {
@@ -35,13 +37,23 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
   onClose,
   onConfigSaved,
 }) => {
-  const [activeTab, setActiveTab] = useState<'config' | 'vm-guide' | 'docker'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'sam-sba' | 'vm-guide' | 'docker'>('config');
   const [provider, setProvider] = useState<'gemini' | 'ollama' | 'openai-compatible' | 'custom'>('gemini');
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [modelName, setModelName] = useState('gemini-3.8-flash');
   const [baseUrl, setBaseUrl] = useState('');
   const [temperature, setTemperature] = useState(0.2);
+  
+  // SBA / SAM.gov Key State
+  const [samApiKeyInput, setSamApiKeyInput] = useState('');
+  const [showSamKey, setShowSamKey] = useState(false);
+  const [samTargetEnv, setSamTargetEnv] = useState<'production' | 'alpha'>('production');
+  const [savingSamKey, setSavingSamKey] = useState(false);
+  const [samFeedback, setSamFeedback] = useState<{ text: string; ok: boolean } | null>(null);
+  const [samStatus, setSamStatus] = useState<any>(null);
+  const [testingSamKey, setTestingSamKey] = useState(false);
+  const [samTestResult, setSamTestResult] = useState<any>(null);
   
   // Status & testing
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +71,17 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
 
+  const loadSamStatus = async () => {
+    try {
+      const res = await fetch('/api/sam/status');
+      const data = await res.json();
+      setSamStatus(data);
+      if (data.activeEnv) setSamTargetEnv(data.activeEnv);
+    } catch (err) {
+      console.warn('Could not load SAM status:', err);
+    }
+  };
+
   // Fetch current config on open
   useEffect(() => {
     if (!isOpen) return;
@@ -75,6 +98,8 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
       })
       .catch((err) => console.warn('Could not fetch AI config:', err))
       .finally(() => setIsLoading(false));
+
+    loadSamStatus();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -160,6 +185,58 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
       setSaveError(`Error saving configuration: ${err.message}`);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveSamKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSamKey(true);
+    setSamFeedback(null);
+    try {
+      const res = await fetch('/api/sam/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: samApiKeyInput,
+          targetEnv: samTargetEnv,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSamFeedback({
+          text: samApiKeyInput.trim() ? 'SAM.gov / SBA API Key saved and activated successfully!' : 'API key cleared.',
+          ok: true,
+        });
+        setSamApiKeyInput('');
+        loadSamStatus();
+      } else {
+        setSamFeedback({ text: data.message || 'Failed to update key', ok: false });
+      }
+    } catch (err: any) {
+      setSamFeedback({ text: err.message || 'Error saving key', ok: false });
+    } finally {
+      setSavingSamKey(false);
+    }
+  };
+
+  const handleTestSamKey = async () => {
+    setTestingSamKey(true);
+    setSamTestResult(null);
+    try {
+      const res = await fetch('/api/sam/verify-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: samApiKeyInput || undefined,
+          targetEnv: samTargetEnv,
+        }),
+      });
+      const data = await res.json();
+      setSamTestResult(data);
+    } catch (err: any) {
+      setSamTestResult({ isValid: false, message: err.message });
+    } finally {
+      setTestingSamKey(false);
     }
   };
 
@@ -315,7 +392,23 @@ WantedBy=multi-user.target
             }`}
           >
             <Key className="w-3.5 h-3.5" />
-            <span>AI Platform & API Keys</span>
+            <span>AI Platform & Gemini Key</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('sam-sba')}
+            className={`pb-2.5 px-3 font-semibold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'sam-sba'
+                ? 'border-amber-600 text-amber-700'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5 text-amber-600" />
+            <span>SBA / SAM.gov Key</span>
+            {samStatus?.hasLiveApiKey && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            )}
           </button>
 
           <button
@@ -666,6 +759,191 @@ WantedBy=multi-user.target
                 >
                   {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>Save AI Configuration</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* Tab: SBA / SAM.gov Opportunities API Key Configuration */}
+        {activeTab === 'sam-sba' && (
+          <form onSubmit={handleSaveSamKey} className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800">
+            {/* Live SAM Status Banner */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${samStatus?.hasLiveApiKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                <div>
+                  <span className="font-bold text-slate-900">SAM.gov Feed Status: </span>
+                  <span className="text-slate-600 font-mono">
+                    Mode: <strong>{samStatus?.hasLiveApiKey ? 'LIVE API' : 'ACTIVE CURATED BENCHMARK'}</strong> | Env: <strong>{samStatus?.activeEnv?.toUpperCase() || 'PRODUCTION'}</strong>
+                  </span>
+                  {samStatus?.maskedKey && (
+                    <span className="text-slate-400 font-mono ml-2 text-[11px]">
+                      (Key: {samStatus.maskedKey})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs">
+                {samStatus?.hasLiveApiKey ? (
+                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>SBA / SAM Key Active</span>
+                  </span>
+                ) : (
+                  <span className="bg-amber-100 text-amber-800 border border-amber-300 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                    <span>No Key Saved (Using Curated Feed)</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Key Input Card */}
+            <div className="bg-amber-50/40 border border-amber-200 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-900">
+                <div className="p-2 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Enter Your SAM.gov / SBA API Key</h4>
+                  <p className="text-xs text-slate-500">
+                    Connect directly to the GSA SAM.gov Opportunities Public API to query live solicitations.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Opportunities API Key
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSamKey ? 'text' : 'password'}
+                    value={samApiKeyInput}
+                    onChange={(e) => setSamApiKeyInput(e.target.value)}
+                    placeholder={samStatus?.hasLiveApiKey ? '•••••••••••••••• (Key saved - enter new key to replace)' : 'Paste your SAM.gov or SBA API key here...'}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSamKey(!showSamKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title={showSamKey ? 'Hide key' : 'Show key'}
+                  >
+                    {showSamKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Key is saved to server runtime configuration. Never committed to source code or git.
+                </p>
+              </div>
+
+              {/* Target Environment */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Target API Environment
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSamTargetEnv('production')}
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer ${
+                      samTargetEnv === 'production'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-1 ring-emerald-400'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <strong className="text-xs">🟢 Production API</strong>
+                      {samTargetEnv === 'production' && <span className="text-[10px] font-bold text-emerald-700 font-mono">SELECTED</span>}
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-mono">api.sam.gov</p>
+                    <p className="text-[10px] text-slate-600 mt-1">Live official notices across all federal agencies.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSamTargetEnv('alpha')}
+                    className={`p-3 rounded-lg border text-left transition cursor-pointer ${
+                      samTargetEnv === 'alpha'
+                        ? 'bg-amber-50 border-amber-500 text-amber-900 ring-1 ring-amber-400'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <strong className="text-xs">🧪 Alpha Test API</strong>
+                      {samTargetEnv === 'alpha' && <span className="text-[10px] font-bold text-amber-700 font-mono">SELECTED</span>}
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-mono">api-alpha.sam.gov</p>
+                    <p className="text-[10px] text-slate-600 mt-1">Recommended for staging and test account verification.</p>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Test Results Banner */}
+            {samTestResult && (
+              <div className={`p-4 rounded-xl border text-xs ${samTestResult.isValid ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-red-50 border-red-300 text-red-950'}`}>
+                <div className="flex items-center gap-2 font-bold mb-1">
+                  {samTestResult.isValid ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>SAM.gov API Handshake Verified (HTTP {samTestResult.httpStatus || 200})!</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-red-600" />
+                      <span>Verification Note: {samTestResult.message || 'Key test completed'}</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-600 font-mono">
+                  Endpoint: {samTestResult.endpoint} | Latency: {samTestResult.latencyMs || 0}ms
+                </p>
+              </div>
+            )}
+
+            {samFeedback && (
+              <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 font-medium ${samFeedback.ok ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-red-50 border-red-300 text-red-900'}`}>
+                {samFeedback.ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                <span>{samFeedback.text}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleTestSamKey}
+                disabled={testingSamKey}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-semibold text-xs border border-slate-300 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${testingSamKey ? 'animate-spin' : ''}`} />
+                <span>{testingSamKey ? 'Verifying with GSA...' : 'Test Key with GSA'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {samStatus?.hasLiveApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSamApiKeyInput('');
+                      handleSaveSamKey({ preventDefault: () => {} } as any);
+                    }}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-xs transition cursor-pointer"
+                  >
+                    Disconnect Key
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={savingSamKey}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                >
+                  {savingSamKey ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>Save SAM / SBA API Key</span>
                 </button>
               </div>
             </div>

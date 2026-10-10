@@ -40,6 +40,7 @@ import {
   generateAttachmentContent 
 } from '../utils/attachmentDownloader';
 import { SowExecutionStrategyView } from './SowExecutionStrategyView';
+import { NativeAttachmentViewer } from './NativeAttachmentViewer';
 
 interface OpportunityDetailModalProps {
   opportunity: SAMOpportunity | null;
@@ -902,7 +903,7 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                       </div>
 
                       <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
-                        {isControlled ? (
+                        {isControlled && (
                           <a
                             href={getSafeSamGovUrl(opportunity)}
                             target="_blank"
@@ -913,37 +914,38 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                             <span>Request Access on SAM</span>
                             <ExternalLink className="w-3 h-3 text-amber-700" />
                           </a>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewAttachment(att)}
-                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 transition cursor-pointer"
-                              title="Preview Document Text"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
+                        )}
 
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadSingle(att)}
-                              className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 text-[11px] font-medium ${
-                                isDownloaded
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                  : 'text-blue-600 hover:bg-blue-50 border-blue-200'
-                              }`}
-                              title="Download this RFP file"
-                            >
-                              {isDownloaded ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span className="hidden sm:inline text-[10px]">Saved</span>
-                                </>
-                              ) : (
-                                <Download className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewAttachment(att)}
+                          className="px-2 py-1 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-slate-200 transition cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+                          title="View Attachment in Native Format (PDF Plug-in, Formatted Doc, or Spreadsheet)"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-blue-600" />
+                          <span>View Contents</span>
+                        </button>
+
+                        {!isControlled && (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSingle(att)}
+                            className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 text-[11px] font-medium ${
+                              isDownloaded
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                : 'text-blue-600 hover:bg-blue-50 border-blue-200'
+                            }`}
+                            title="Download this RFP file"
+                          >
+                            {isDownloaded ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="hidden sm:inline text-[10px]">Saved</span>
+                              </>
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1066,88 +1068,14 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
     </div>
   </div>
 
-      {/* DOCUMENT PREVIEW MODAL */}
+      {/* NATIVE ATTACHMENT & DOCUMENT VIEWER */}
       {previewAttachment && (
-        <div className={`fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center transition-all ${previewMaximized ? 'p-0' : 'p-2 sm:p-4 md:p-6'}`}>
-          <div className={`bg-slate-900 border border-slate-700 text-white flex flex-col shadow-2xl overflow-hidden transition-all duration-150 ${previewMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'w-full max-w-4xl max-h-[90vh] rounded-2xl animate-in fade-in zoom-in-95'}`}>
-            {/* Preview Header */}
-            <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5 truncate">
-                <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  <FileText className="w-4 h-4" />
-                </span>
-                <div className="truncate">
-                  <h3 className="font-bold text-sm text-white truncate">{previewAttachment.name}</h3>
-                  <p className="text-[11px] text-slate-400">
-                    {previewAttachment.type} • {previewAttachment.size} • {opportunity.solicitationNumber}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleCopyPreviewText}
-                  className="px-2.5 py-1 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-700 flex items-center gap-1 transition"
-                  title="Copy document text to clipboard"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copiedPreview ? 'Copied!' : 'Copy'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleDownloadSingle(previewAttachment)}
-                  className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg flex items-center gap-1 transition"
-                  title="Download File"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPreviewMaximized(!previewMaximized)}
-                  title={previewMaximized ? "Restore window size" : "Expand window (maximize)"}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                >
-                  {previewMaximized ? <Minimize2 className="w-4 h-4 text-blue-400" /> : <Maximize2 className="w-4 h-4" />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewAttachment(null);
-                    setPreviewMaximized(false);
-                  }}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"
-                  title="Close document preview"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Document Viewer Body */}
-            <div className="p-5 overflow-y-auto flex-1 bg-slate-950/50">
-              <pre className="font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed select-all">
-                {generateAttachmentContent(previewAttachment, opportunity)}
-              </pre>
-            </div>
-
-            {/* Preview Footer */}
-            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <span>Official SAM.gov Procurement Artifact</span>
-              <button
-                type="button"
-                onClick={() => setPreviewAttachment(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition"
-              >
-                Close Preview
-              </button>
-            </div>
-          </div>
-        </div>
+        <NativeAttachmentViewer
+          attachment={previewAttachment}
+          opportunity={opportunity}
+          onClose={() => setPreviewAttachment(null)}
+          onDownloadSingle={handleDownloadSingle}
+        />
       )}
     </div>
   );
