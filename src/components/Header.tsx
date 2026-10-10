@@ -39,6 +39,7 @@ interface HeaderProps {
   onRefreshFeed?: () => void;
   onOpenValidationModal?: () => void;
   onOpenAiConfig?: () => void;
+  onOpenGsaApiKeyModal?: () => void;
   aiConfigStatus?: {
     hasKey: boolean;
     provider: string;
@@ -64,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
   onRefreshFeed,
   onOpenValidationModal,
   onOpenAiConfig,
+  onOpenGsaApiKeyModal,
   aiConfigStatus,
 }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = React.useState(false);
@@ -199,6 +201,18 @@ export const Header: React.FC<HeaderProps> = ({
               SBA API Key: <strong className={hasLiveApiKey ? 'text-emerald-400' : 'text-amber-300'}>{hasLiveApiKey ? 'Active' : 'Input Key'}</strong>
             </span>
           </button>
+          {onOpenGsaApiKeyModal && (
+            <button
+              onClick={onOpenGsaApiKeyModal}
+              className="bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-600/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
+              title="Configure GSA Acquisition Gateway & CALC API Key (api.gsa.gov)"
+            >
+              <DollarSign className="w-3 h-3 text-emerald-400" />
+              <span>
+                GSA Rates API Key: <strong className="text-emerald-300">Config</strong>
+              </span>
+            </button>
+          )}
           {onOpenValidationModal && (
             <button
               onClick={onOpenValidationModal}

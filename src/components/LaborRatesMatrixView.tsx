@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   SlidersHorizontal,
@@ -17,7 +17,12 @@ import {
   Info,
   Layers,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Key,
+  Globe,
+  RefreshCw,
+  Zap,
+  Check
 } from 'lucide-react';
 import {
   FEDERAL_LABOR_CATEGORIES,
@@ -27,6 +32,7 @@ import {
 } from '../data/federalLaborCategories';
 import { SAMOpportunity, BusinessProfile } from '../types/contract';
 import { AddLaborCategoryModal } from './AddLaborCategoryModal';
+import { GsaApiKeyModal } from './GsaApiKeyModal';
 
 interface LaborRatesMatrixViewProps {
   opportunities: SAMOpportunity[];
@@ -34,6 +40,7 @@ interface LaborRatesMatrixViewProps {
   activeOpportunity?: SAMOpportunity | null;
   onOpenOpportunityDetail: (opp: SAMOpportunity) => void;
   onAddLaborToOpportunity?: (oppNoticeId: string, item: OpportunityCustomLaborItem) => void;
+  onOpenGsaApiKeyModal?: () => void;
 }
 
 export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
@@ -42,12 +49,24 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
   activeOpportunity,
   onOpenOpportunityDetail,
   onAddLaborToOpportunity,
+  onOpenGsaApiKeyModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedExemption, setSelectedExemption] = useState<string>('all');
   const [selectedClearance, setSelectedClearance] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'rate_desc' | 'rate_asc' | 'title' | 'exp'>('rate_desc');
+
+  // GSA API Key Modal state
+  const [isGsaModalOpen, setIsGsaModalOpen] = useState(false);
+  const [gsaStatus, setGsaStatus] = useState<any>(null);
+  
+  // Live GSA Rates Pull state
+  const [viewMode, setViewMode] = useState<'benchmarks' | 'live_gsa'>('benchmarks');
+  const [liveGsaQuery, setLiveGsaQuery] = useState('');
+  const [liveGsaRates, setLiveGsaRates] = useState<any[]>([]);
+  const [isLoadingLiveGsa, setIsLoadingLiveGsa] = useState(false);
+  const [liveGsaError, setLiveGsaError] = useState<string | null>(null);
 
   // Modal state for adding to solicitation
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -56,6 +75,44 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
     activeOpportunity?.noticeId || opportunities[0]?.noticeId || ''
   );
   const [recentlyAddedFeedback, setRecentlyAddedFeedback] = useState<string | null>(null);
+
+  const fetchGsaStatus = async () => {
+    try {
+      const res = await fetch('/api/gsa/status');
+      const data = await res.json();
+      setGsaStatus(data);
+    } catch (e) {
+      console.warn('Could not fetch GSA status:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchGsaStatus();
+  }, []);
+
+  const handleFetchLiveGsaRates = async (overrideQuery?: string) => {
+    const q = overrideQuery !== undefined ? overrideQuery : (liveGsaQuery || searchQuery || 'Engineer');
+    setIsLoadingLiveGsa(true);
+    setLiveGsaError(null);
+    try {
+      const res = await fetch('/api/gsa/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, limit: 30 }),
+      });
+      const data = await res.json();
+      if (data.rates && data.rates.length > 0) {
+        setLiveGsaRates(data.rates);
+      } else {
+        setLiveGsaRates([]);
+        setLiveGsaError(data.message || 'No live GSA rates returned for query.');
+      }
+    } catch (err: any) {
+      setLiveGsaError(err.message || 'Error communicating with GSA CALC API endpoint.');
+    } finally {
+      setIsLoadingLiveGsa(false);
+    }
+  };
 
   // Selected target opportunity
   const currentTargetOpp = useMemo(() => {
@@ -164,8 +221,62 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
               <span>Federal Labor Categories & CLIN Wage Rate Limits Explorer</span>
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Search and analyze all federal labor categories with comprehensive minimum wage floors, median pricing benchmarks, and maximum ceiling rates. Select any position to add directly to your active solicitation CLIN breakdown and RFP proposal output.
+              Search and analyze all federal labor categories with comprehensive minimum wage floors, median pricing benchmarks, and maximum ceiling rates. Connect your GSA API key to execute live real-time queries against GSA Acquisition Gateway & CALC APIs (api.gsa.gov).
             </p>
+
+            {/* GSA API Key Integration Status Bar */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenGsaApiKeyModal) onOpenGsaApiKeyModal();
+                  else setIsGsaModalOpen(true);
+                }}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition border cursor-pointer ${
+                  gsaStatus?.hasLiveApiKey
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 hover:bg-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-400/40 hover:bg-amber-500/30'
+                }`}
+              >
+                <Key className="w-4 h-4" />
+                <span>
+                  {gsaStatus?.hasLiveApiKey
+                    ? `GSA API Key Connected (${gsaStatus.maskedKey})`
+                    : 'Input GSA API Key for Live Pulls (api.gsa.gov)'}
+                </span>
+              </button>
+
+              <div className="flex items-center bg-slate-900/90 border border-slate-700 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('benchmarks')}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    viewMode === 'benchmarks'
+                      ? 'bg-blue-600 text-white font-bold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Federal Benchmarks Matrix
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('live_gsa');
+                    if (liveGsaRates.length === 0) {
+                      handleFetchLiveGsaRates();
+                    }
+                  }}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'live_gsa'
+                      ? 'bg-emerald-600 text-white font-bold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Live GSA CALC Pulls</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Quick Target Solicitation Selector & Export */}
@@ -365,161 +476,359 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
         </div>
       </div>
 
-      {/* Labor Categories Grid / Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredBenchmarks.map((role) => {
-          const isSca = role.exemptionStatus.includes('SCA');
-          return (
-            <div
-              key={role.id}
-              className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-blue-400 hover:shadow-md transition space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                {/* Header: Title, SOC & Exemption */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                        {role.category}
-                      </span>
-                      {isSca ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                          <Shield className="w-3 h-3 text-amber-600" />
-                          <span>SCA Wage Determination</span>
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                          FLSA Exempt
-                        </span>
-                      )}
+      {/* Live GSA CALC Rate Pulls View Mode */}
+      {viewMode === 'live_gsa' ? (
+        <div className="space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-emerald-400" />
+                  <span>Live GSA CALC API Real-Time Rate Search</span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+                    api.gsa.gov v4.0
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Query live contract-awarded hourly ceiling rates across GSA MAS Schedule contracts in real time.
+                </p>
+              </div>
+
+              {!gsaStatus?.hasLiveApiKey && (
+                <button
+                  type="button"
+                  onClick={() => setIsGsaModalOpen(true)}
+                  className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
+                >
+                  <Key className="w-4 h-4 text-amber-400" />
+                  <span>Input GSA API Key</span>
+                </button>
+              )}
+            </div>
+
+            {/* Live Search Controls */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  placeholder="Query live GSA CALC rates (e.g., Engineer, Security Analyst, Developer, Cloud)..."
+                  value={liveGsaQuery}
+                  onChange={(e) => setLiveGsaQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleFetchLiveGsaRates();
+                  }}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleFetchLiveGsaRates()}
+                disabled={isLoadingLiveGsa}
+                className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/50 disabled:opacity-50"
+              >
+                {isLoadingLiveGsa ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Querying api.gsa.gov...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 text-amber-300" />
+                    <span>Query Live GSA Rates</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Quick Query Pill Presets */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+              <span className="text-slate-400 text-[11px] font-medium">Suggested Searches:</span>
+              {['Software Engineer', 'Cybersecurity Analyst', 'Cloud Architect', 'Project Manager', 'Database Administrator', 'Data Scientist'].map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => {
+                    setLiveGsaQuery(q);
+                    handleFetchLiveGsaRates(q);
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] border border-slate-700 transition"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Error / Notice Banner */}
+          {liveGsaError && (
+            <div className="p-4 bg-amber-950/50 border border-amber-500/40 rounded-xl text-xs text-amber-200 flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold block">{liveGsaError}</span>
+                  <span className="text-[11px] opacity-90 mt-0.5 block">
+                    Ensure your GSA API key is valid or click "Input GSA API Key" to update your key.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGsaModalOpen(true)}
+                className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-semibold rounded-lg shrink-0 border border-amber-500/40"
+              >
+                Set Key
+              </button>
+            </div>
+          )}
+
+          {/* Live GSA Results Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {liveGsaRates.map((rate, idx) => (
+              <div
+                key={rate.id || idx}
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white shadow-md hover:border-emerald-500/50 transition flex flex-col justify-between space-y-3"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Live GSA CALC Award
+                    </span>
+                    <span className="text-lg font-bold font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-800/60">
+                      ${rate.ceilingRate.toFixed(2)}/hr
+                    </span>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-slate-100">{rate.laborCategory}</h4>
+
+                  <div className="text-xs text-slate-300 space-y-1 bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Vendor:</span>
+                      <strong className="text-slate-200 truncate max-w-[180px]">{rate.vendorName}</strong>
                     </div>
-
-                    <h3 className="text-base font-bold text-slate-900 pt-0.5">
-                      {role.title}
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-500">
-                      <span>SOC: <strong>{role.socCode}</strong></span>
-                      {role.scaCode && (
-                        <span>• DOL SCA Code: <strong>{role.scaCode}</strong></span>
-                      )}
-                      <span>• Min Exp: <strong>{role.minYearsExp} yrs</strong></span>
-                      <span>• Edu: <strong>{role.education}</strong></span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Contract #:</span>
+                      <code className="text-emerald-400 font-mono text-[11px]">{rate.contractNumber}</code>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Schedule:</span>
+                      <span className="text-slate-300 truncate max-w-[180px]">{rate.schedule}</span>
                     </div>
                   </div>
 
-                  {/* Target Rate Badge */}
-                  <div className="text-right shrink-0 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">Median Target</span>
-                    <span className="text-lg font-bold font-mono text-emerald-700">
-                      ${role.medianRate.toFixed(2)}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block font-mono">/hr burdened</span>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                    <span>Min Experience: <strong className="text-slate-200">{rate.minYearsExp} yrs</strong></span>
+                    <span>• Education: <strong className="text-slate-200">{rate.educationLevel}</strong></span>
+                    <span>• Site: <strong className="text-slate-200">{rate.site}</strong></span>
                   </div>
                 </div>
 
-                {/* Rate Limit Envelope Visualizer */}
-                <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 text-[11px] font-medium">Pricing Envelope Limits:</span>
-                    <span className="font-mono text-slate-800 font-bold text-xs">
-                      ${role.minRate.toFixed(0)} - ${role.maxRate.toFixed(0)}/hr
+                <button
+                  type="button"
+                  onClick={() => {
+                    const mapEdu = (edu: string): 'High School' | 'Associate' | 'Bachelor' | 'Master' | 'Doctorate' => {
+                      const l = (edu || '').toLowerCase();
+                      if (l.includes('master')) return 'Master';
+                      if (l.includes('doc') || l.includes('phd')) return 'Doctorate';
+                      if (l.includes('assoc')) return 'Associate';
+                      if (l.includes('high')) return 'High School';
+                      return 'Bachelor';
+                    };
+
+                    const benchItem: LaborCategoryBenchmark = {
+                      id: rate.id,
+                      title: rate.laborCategory,
+                      category: 'Information Technology',
+                      socCode: '15-1211',
+                      exemptionStatus: 'Exempt (FLSA)',
+                      minRate: Math.round(rate.ceilingRate * 0.8),
+                      medianRate: rate.ceilingRate,
+                      maxRate: Math.round(rate.ceilingRate * 1.25),
+                      minYearsExp: rate.minYearsExp,
+                      education: mapEdu(rate.educationLevel),
+                      clearanceLevel: 'Public Trust',
+                      gsaScheduleSource: `${rate.vendorName} (${rate.contractNumber})`,
+                      certifications: ['GSA MAS Certified'],
+                      description: `Live contract-awarded GSA MAS ceiling rate from ${rate.vendorName} under contract ${rate.contractNumber}.`,
+                      typicalClinDeliverables: ['Monthly Progress Report (CDRL A001)'],
+                    };
+                    handleOpenAddForRole(benchItem);
+                  }}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add to Solicitation CLIN Matrix</span>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {liveGsaRates.length === 0 && !isLoadingLiveGsa && !liveGsaError && (
+            <div className="text-center p-8 bg-slate-900 border border-slate-800 rounded-2xl text-slate-400 text-xs space-y-2">
+              <Globe className="w-8 h-8 text-slate-600 mx-auto" />
+              <p className="font-semibold text-slate-300">Search Live GSA Awarded Ceiling Rates</p>
+              <p className="max-w-md mx-auto text-slate-500">
+                Type a labor title or select a preset above to stream real-time price ceiling data from api.gsa.gov across GSA MAS contracts.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Standard Federal Benchmarks Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredBenchmarks.map((role) => {
+            const isSca = role.exemptionStatus.includes('SCA');
+            return (
+              <div
+                key={role.id}
+                className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs hover:border-blue-400 hover:shadow-md transition space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  {/* Header: Title, SOC & Exemption */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                          {role.category}
+                        </span>
+                        {isSca ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-amber-600" />
+                            <span>SCA Wage Determination</span>
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                            FLSA Exempt
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-base font-bold text-slate-900 pt-0.5">
+                        {role.title}
+                      </h3>
+
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-500">
+                        <span>SOC: <strong>{role.socCode}</strong></span>
+                        {role.scaCode && (
+                          <span>• DOL SCA Code: <strong>{role.scaCode}</strong></span>
+                        )}
+                        <span>• Min Exp: <strong>{role.minYearsExp} yrs</strong></span>
+                        <span>• Edu: <strong>{role.education}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Target Rate Badge */}
+                    <div className="text-right shrink-0 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Median Target</span>
+                      <span className="text-lg font-bold font-mono text-emerald-700">
+                        ${role.medianRate.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block font-mono">/hr burdened</span>
+                    </div>
+                  </div>
+
+                  {/* Rate Limit Envelope Visualizer */}
+                  <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500 text-[11px] font-medium">Pricing Envelope Limits:</span>
+                      <span className="font-mono text-slate-800 font-bold text-xs">
+                        ${role.minRate.toFixed(0)} - ${role.maxRate.toFixed(0)}/hr
+                      </span>
+                    </div>
+
+                    {/* Range Bar Gauge */}
+                    <div className="relative w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="absolute left-0 w-full h-full bg-linear-to-r from-blue-300 via-emerald-400 to-indigo-500 rounded-full opacity-80"></div>
+                      <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-slate-900 -translate-x-1/2" title="Median Benchmark"></div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono">
+                      <div>
+                        <span className="text-slate-400 block">Floor (Min Limit)</span>
+                        <strong className="text-slate-800">${role.minRate.toFixed(2)}/hr</strong>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-emerald-700 block font-bold">Government Median</span>
+                        <strong className="text-emerald-800">${role.medianRate.toFixed(2)}/hr</strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 block">Ceiling (Max Limit)</span>
+                        <strong className="text-blue-900">${role.maxRate.toFixed(2)}/hr</strong>
+                      </div>
+                    </div>
+
+                    {isSca && role.scaWageFloor && (
+                      <div className="mt-1.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-amber-900">
+                        <span>DOL Statutory Direct Wage Floor:</span>
+                        <strong className="font-mono">${role.scaWageFloor.toFixed(2)}/hr + $5.36 H&W</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {role.description}
+                  </p>
+
+                  {/* Certifications & Clearance */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                    <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-semibold flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-purple-600" />
+                      <span>Clearance: {role.clearanceLevel}</span>
                     </span>
+
+                    {role.certifications.map((cert, cIdx) => (
+                      <span
+                        key={cIdx}
+                        className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono"
+                      >
+                        {cert}
+                      </span>
+                    ))}
                   </div>
 
-                  {/* Range Bar Gauge */}
-                  <div className="relative w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                    <div className="absolute left-0 w-full h-full bg-linear-to-r from-blue-300 via-emerald-400 to-indigo-500 rounded-full opacity-80"></div>
-                    {/* Median Tick */}
-                    <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-slate-900 -translate-x-1/2" title="Median Benchmark"></div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono">
-                    <div>
-                      <span className="text-slate-400 block">Floor (Min Limit)</span>
-                      <strong className="text-slate-800">${role.minRate.toFixed(2)}/hr</strong>
-                    </div>
-                    <div className="text-center">
-                      <span className="text-emerald-700 block font-bold">Government Median</span>
-                      <strong className="text-emerald-800">${role.medianRate.toFixed(2)}/hr</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-slate-400 block">Ceiling (Max Limit)</span>
-                      <strong className="text-blue-900">${role.maxRate.toFixed(2)}/hr</strong>
-                    </div>
-                  </div>
-
-                  {/* SCA Statutory Floor Note */}
-                  {isSca && role.scaWageFloor && (
-                    <div className="mt-1.5 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-amber-900">
-                      <span>DOL Statutory Direct Wage Floor:</span>
-                      <strong className="font-mono">${role.scaWageFloor.toFixed(2)}/hr + $5.36 H&W</strong>
+                  {/* Deliverables */}
+                  {role.typicalClinDeliverables && role.typicalClinDeliverables.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Typical CLIN / CDRL Deliverables:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {role.typicalClinDeliverables.map((deliv, dIdx) => (
+                          <span
+                            key={dIdx}
+                            className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px]"
+                          >
+                            {deliv}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Description & Typical CLIN Tasks */}
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {role.description}
-                </p>
-
-                {/* Certifications & Clearance */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
-                  <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-semibold flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-purple-600" />
-                    <span>Clearance: {role.clearanceLevel}</span>
+                {/* Action Button: Add to Active Solicitation */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <span className="text-[10px] text-slate-400 font-mono truncate">
+                    Source: {role.gsaScheduleSource || 'GSA MAS Schedule'}
                   </span>
 
-                  {role.certifications.map((cert, cIdx) => (
-                    <span
-                      key={cIdx}
-                      className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono"
-                    >
-                      {cert}
-                    </span>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAddForRole(role)}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
+                    title={`Add ${role.title} to solicitation CLIN pricing & RFP proposal output`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add to Solicitation</span>
+                  </button>
                 </div>
-
-                {/* Typical Deliverables */}
-                {role.typicalClinDeliverables && role.typicalClinDeliverables.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Typical CLIN / CDRL Deliverables:
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {role.typicalClinDeliverables.map((deliv, dIdx) => (
-                        <span
-                          key={dIdx}
-                          className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px]"
-                        >
-                          {deliv}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-
-              {/* Action Button: Add to Active Solicitation */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                <span className="text-[10px] text-slate-400 font-mono truncate">
-                  Source: {role.gsaScheduleSource || 'GSA MAS Schedule'}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenAddForRole(role)}
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
-                  title={`Add ${role.title} to solicitation CLIN pricing & RFP proposal output`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add to Solicitation</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add Labor Category Modal */}
       {selectedBenchmarkForAdd && currentTargetOpp && (
@@ -534,6 +843,13 @@ export const LaborRatesMatrixView: React.FC<LaborRatesMatrixViewProps> = ({
           existingItems={currentTargetOpp.customLaborItems || []}
         />
       )}
+
+      {/* GSA API Key Modal */}
+      <GsaApiKeyModal
+        isOpen={isGsaModalOpen}
+        onClose={() => setIsGsaModalOpen(false)}
+        onKeySaved={fetchGsaStatus}
+      />
     </div>
   );
 };

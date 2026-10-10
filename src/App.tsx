@@ -65,6 +65,7 @@ import { MarketInsightsView } from './components/MarketInsightsView';
 import { LaborRatesMatrixView } from './components/LaborRatesMatrixView';
 import { SamValidationModal } from './components/SamValidationModal';
 import { AiConfigModal } from './components/AiConfigModal';
+import { GsaApiKeyModal } from './components/GsaApiKeyModal';
 
 const DEFAULT_FILTERS: FilterState = {
   searchQuery: '',
@@ -364,6 +365,7 @@ export default function App() {
 
   // AI Agent Configuration State (Self-Hosted Home VM / Gemini)
   const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
+  const [isGsaApiKeyModalOpen, setIsGsaApiKeyModalOpen] = useState(false);
   const [aiConfigStatus, setAiConfigStatus] = useState<{
     hasKey: boolean;
     provider: string;
@@ -1023,6 +1025,7 @@ export default function App() {
         onRefreshFeed={() => handleSyncSamFeed()}
         onOpenValidationModal={() => handleOpenValidation()}
         onOpenAiConfig={() => setIsAiConfigOpen(true)}
+        onOpenGsaApiKeyModal={() => setIsGsaApiKeyModalOpen(true)}
         aiConfigStatus={aiConfigStatus}
       />
 
@@ -1528,6 +1531,7 @@ export default function App() {
             activeOpportunity={selectedOppForDetail || pipeline[0]?.opportunity || opportunities[0]}
             onOpenOpportunityDetail={(opp) => setSelectedOppForDetail(opp)}
             onAddLaborToOpportunity={handleAddLaborToOpportunity}
+            onOpenGsaApiKeyModal={() => setIsGsaApiKeyModalOpen(true)}
           />
         )}
       </main>
@@ -1590,6 +1594,12 @@ export default function App() {
         isOpen={isAiConfigOpen}
         onClose={() => setIsAiConfigOpen(false)}
         onConfigSaved={fetchAiConfig}
+      />
+
+      {/* GSA Acquisition Gateway & CALC Rate API Key Configuration Modal */}
+      <GsaApiKeyModal
+        isOpen={isGsaApiKeyModalOpen}
+        onClose={() => setIsGsaApiKeyModalOpen(false)}
       />
 
       {/* Footer */}
