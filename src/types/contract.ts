@@ -257,6 +257,40 @@ export interface SowResourceStrategy {
     sectionTitle: string;
     fullText: string;
   };
+  attachmentGrounding?: {
+    totalAttachmentsAnalyzed: number;
+    attachmentsList: {
+      name: string;
+      type: string;
+      category: 'PWS/SOW' | 'Section L' | 'Section M' | 'CDRL' | 'Pricing/CLIN' | 'Wage Determination' | 'Solicitation';
+      size?: string;
+    }[];
+    extractedDeliverablesCount?: number;
+    cdrlSchedule?: {
+      cdrlNumber: string;
+      title: string;
+      frequency: string;
+      format: string;
+    }[];
+    sectionLVolumes?: {
+      volume: string;
+      title: string;
+      pageLimit: string;
+      focus: string;
+    }[];
+    sectionMEvaluationFactors?: {
+      factor: string;
+      importance: string;
+      description: string;
+    }[];
+    clinPricingSummary?: {
+      clin: string;
+      laborCategory: string;
+      hours: number;
+      rate: string;
+      total: string;
+    }[];
+  };
   generatedAt?: string;
   sourceTag?: string;
 }
