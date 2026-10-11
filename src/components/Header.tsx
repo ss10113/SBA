@@ -171,86 +171,40 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-lg">
-      {/* Official Gov Banner */}
-      <div className="bg-slate-950 px-4 py-1 border-b border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Official Gov Status Bar */}
+      <div className="bg-slate-950 px-4 py-1.5 border-b border-slate-800/80 text-xs text-slate-400 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <span className="inline-block w-3.5 h-2.5 bg-red-600 relative overflow-hidden rounded-xs border border-white/20">
             <span className="absolute top-0 left-0 w-1.5 h-1.5 bg-blue-700"></span>
           </span>
-          <span className="font-medium text-slate-300">An Official SAM.gov SBA Intelligence Suite</span>
-          <span className="hidden sm:inline text-slate-500">|</span>
+          <span className="font-medium text-slate-300 hidden sm:inline">Official SAM.gov SBA Intelligence Suite</span>
+          <span className="hidden sm:inline text-slate-600">•</span>
           <button
             onClick={() => setApiInfoModalOpen(true)}
-            className="flex items-center gap-1.5 hover:underline cursor-pointer transition"
+            className="flex items-center gap-1.5 hover:underline cursor-pointer transition text-[11px]"
           >
             <span className={`w-2 h-2 rounded-full ${hasLiveApiKey ? (activeEnv === 'alpha' ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse') : 'bg-blue-400'}`}></span>
-            <span className={`font-mono text-[11px] ${hasLiveApiKey ? (activeEnv === 'alpha' ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold') : 'text-blue-300'}`}>
+            <span className={`font-mono ${hasLiveApiKey ? (activeEnv === 'alpha' ? 'text-amber-300 font-bold' : 'text-emerald-400 font-bold') : 'text-blue-300'}`}>
               {getEnvBadgeLabel()}
             </span>
           </button>
         </div>
-        <div className="flex items-center gap-2.5 text-[11px]">
-          {onOpenAiConfig && (
-            <button
-              onClick={onOpenAiConfig}
-              className="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 hover:text-white border border-indigo-600/70 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
-              title="Configure AI Agent / Gemini API Key / Self-Hosted Home VM"
-            >
-              <Cpu className="w-3 h-3 text-indigo-400" />
-              <span>
-                AI Agent: <strong className="text-white">{aiConfigStatus?.hasKey ? (aiConfigStatus.provider === 'gemini' ? 'Gemini 3.8' : aiConfigStatus.provider.toUpperCase()) : 'Config'}</strong>
-              </span>
-            </button>
-          )}
-          <button
-            onClick={() => setApiInfoModalOpen(true)}
-            className="bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 hover:text-white border border-amber-600/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
-            title="Configure SAM.gov / SBA API Key and Testing Environment"
-          >
-            <Key className="w-3 h-3 text-amber-400" />
-            <span>
-              SBA API Key: <strong className={hasLiveApiKey ? 'text-emerald-400' : 'text-amber-300'}>{hasLiveApiKey ? 'Active' : 'Input Key'}</strong>
-            </span>
-          </button>
-          {onOpenGsaApiKeyModal && (
-            <button
-              onClick={onOpenGsaApiKeyModal}
-              className="bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-600/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
-              title="Configure GSA Acquisition Gateway & CALC API Key (api.gsa.gov)"
-            >
-              <DollarSign className="w-3 h-3 text-emerald-400" />
-              <span>
-                GSA Rates API Key: <strong className="text-emerald-300">Config</strong>
-              </span>
-            </button>
-          )}
-          {onOpenValidationModal && (
-            <button
-              onClick={onOpenValidationModal}
-              className="bg-blue-900/60 hover:bg-blue-800 text-blue-200 hover:text-white border border-blue-500/50 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide flex items-center gap-1 transition cursor-pointer"
-              title="Learn which number to use and validate against SAM.gov"
-            >
-              <ShieldCheck className="w-3 h-3 text-blue-400" />
-              <span>Validate Contract ID</span>
-            </button>
-          )}
+
+        <div className="flex items-center gap-3 text-[11px]">
           {totalSamDatabaseRecords !== undefined && (
-            <span className="hidden lg:inline bg-slate-800 text-blue-300 border border-slate-700 px-2 py-0.5 rounded font-mono text-[10px]">
-              SAM.gov Matches: <strong className="text-white font-bold">{totalSamDatabaseRecords.toLocaleString()}</strong>
+            <span className="text-slate-400 font-mono hidden md:inline">
+              Repository: <strong className="text-slate-200">{totalSamDatabaseRecords.toLocaleString()} notices</strong>
             </span>
           )}
-          <span className="text-slate-400">
-            CAGE: <strong className="text-white font-mono">{currentProfile.cageCode}</strong>
-          </span>
-          <span className="hidden md:inline text-slate-400">
-            UEI: <strong className="text-white font-mono">{currentProfile.uei}</strong>
-          </span>
-          <span className="bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide">
+          <div className="flex items-center gap-1.5 text-slate-300 font-mono">
+            <span className="text-slate-500">CAGE</span>
+            <strong className="text-white bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{currentProfile.cageCode}</strong>
+          </div>
+          <span className="hidden sm:inline-block bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide">
             SBA CERTIFIED
           </span>
         </div>
       </div>
-
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         {/* Brand */}
@@ -393,27 +347,32 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* Desktop Controls (AI Config & Profile Switcher) */}
-        <div className="hidden md:flex items-center gap-2.5">
+        {/* Desktop Controls (AI & API Status Icons + Profile Switcher) */}
+        <div className="hidden md:flex items-center gap-2">
+          {onRefreshFeed && (
+            <button
+              type="button"
+              onClick={onRefreshFeed}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
+              title="Sync latest federal solicitations from SAM.gov"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              <span>Sync SAM</span>
+            </button>
+          )}
+
           {onOpenAiConfig && (
             <button
               type="button"
               onClick={onOpenAiConfig}
-              className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-800 border border-indigo-500/50 hover:border-indigo-400 px-3 py-1.5 rounded-lg text-left text-xs transition cursor-pointer text-slate-200"
-              title="Configure AI Agent / Google Gemini API Key / Self-Hosted Home VM"
+              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/70 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-slate-300 hover:text-white shadow-2xs"
+              title="Configure AI Agent (Google Gemini 3.8 or Self-Hosted Home VM)"
             >
-              <div className="w-7 h-7 rounded-md bg-indigo-900/70 border border-indigo-500/40 text-indigo-300 flex items-center justify-center font-bold text-xs">
+              <div className="relative">
                 <Cpu className="w-4 h-4 text-indigo-400" />
+                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-900 ${aiConfigStatus?.hasKey ? 'bg-emerald-400' : 'bg-amber-400'}`} />
               </div>
-              <div className="max-w-[130px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-white">AI Agent</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${aiConfigStatus?.hasKey ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-                </div>
-                <p className="text-[10px] text-indigo-300 font-mono truncate">
-                  {aiConfigStatus?.hasKey ? (aiConfigStatus.provider === 'gemini' ? (aiConfigStatus.modelName || 'Gemini 3.8') : aiConfigStatus.provider.toUpperCase()) : 'Connect Key'}
-                </p>
-              </div>
+              <span className="font-medium">AI Agent</span>
             </button>
           )}
 
@@ -421,22 +380,27 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setApiInfoModalOpen(true)}
-            className="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-800 border border-amber-500/50 hover:border-amber-400 px-3 py-1.5 rounded-lg text-left text-xs transition cursor-pointer text-slate-200"
-            title="Configure SAM.gov / SBA API Key and Environments"
+            className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/70 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-slate-300 hover:text-white shadow-2xs"
+            title="Configure SAM.gov API Key & Testing Environment"
           >
-            <div className="w-7 h-7 rounded-md bg-amber-950/70 border border-amber-500/40 text-amber-300 flex items-center justify-center font-bold text-xs">
+            <div className="relative">
               <Key className="w-4 h-4 text-amber-400" />
+              <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-900 ${hasLiveApiKey ? 'bg-emerald-400' : 'bg-amber-400'}`} />
             </div>
-            <div className="max-w-[130px]">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-white">SBA API Key</span>
-                <span className={`w-1.5 h-1.5 rounded-full ${hasLiveApiKey ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-              </div>
-              <p className="text-[10px] text-amber-300 font-mono truncate">
-                {hasLiveApiKey ? 'Connected' : 'Input Key'}
-              </p>
-            </div>
+            <span className="font-medium">API Gateway</span>
           </button>
+
+          {onOpenValidationModal && (
+            <button
+              type="button"
+              onClick={onOpenValidationModal}
+              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-blue-500/70 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-slate-300 hover:text-white shadow-2xs"
+              title="SAM.gov ID & Verification Inspector"
+            >
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+              <span className="font-medium">ID Inspector</span>
+            </button>
+          )}
 
           {/* Profile Switcher dropdown on desktop */}
           <div className="relative">

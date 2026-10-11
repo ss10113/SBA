@@ -427,188 +427,82 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </div>
 
           {/* Territorial & Regional Quick Selector Row */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-5 pt-3 border-t border-slate-100 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Fast Geographic Shortcuts (All States & U.S. Territories):</span>
-              </span>
-              {(filters.stateFilter || filters.cityFilter) && (
-                <button
-                  type="button"
-                  onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '', cityFilter: '' }))}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer"
-                >
-                  Reset Location to Nationwide
-                </button>
-              )}
-            </div>
-
+          <div className="col-span-1 sm:col-span-2 lg:col-span-5 pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-slate-500 font-medium flex items-center gap-1 mr-1">
+                <Compass className="w-3.5 h-3.5 text-blue-600" />
+                <span>Quick Location:</span>
+              </span>
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: '', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer ${
-                  !filters.stateFilter
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                className={`px-2.5 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                  !filters.stateFilter ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                 }`}
               >
-                🌐 Nationwide & All Territories
+                Nationwide
               </button>
-
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'ALL_TERRITORIES', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer flex items-center gap-1 ${
-                  filters.stateFilter === 'ALL_TERRITORIES'
-                    ? 'bg-indigo-600 text-white border-indigo-700 font-semibold shadow-xs'
-                    : 'bg-indigo-50/70 hover:bg-indigo-100 text-indigo-800 border-indigo-200'
+                className={`px-2.5 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                  filters.stateFilter === 'ALL_TERRITORIES' ? 'bg-indigo-600 text-white border-indigo-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                 }`}
-                title="Search across all 6 U.S. Territories: Puerto Rico, Guam, Virgin Islands, American Samoa, Northern Marianas, Minor Outlying Islands"
               >
-                <span>🏝️ All U.S. Territories</span>
+                🏝️ All Territories
               </button>
-
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'PR', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'PR'
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                className={`px-2 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                  filters.stateFilter === 'PR' ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                 }`}
-                title="Puerto Rico (San Juan, Guaynabo, Fort Buchanan)"
               >
-                🇵🇷 Puerto Rico (PR)
+                🇵🇷 PR
               </button>
-
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'GU', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'GU'
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                className={`px-2 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                  filters.stateFilter === 'GU' ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                 }`}
-                title="Guam (Santa Rita, Yigo, Andersen AFB, Naval Base Guam)"
               >
-                🇬🇺 Guam (GU)
+                🇬🇺 GU
               </button>
-
               <button
                 type="button"
                 onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'VI', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'VI'
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                className={`px-2 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                  filters.stateFilter === 'VI' ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                 }`}
-                title="U.S. Virgin Islands (St. Thomas, St. Croix, Charlotte Amalie)"
               >
-                🇻🇮 Virgin Islands (VI)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'AS', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'AS'
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-                title="American Samoa (Pago Pago, Tafuna)"
-              >
-                🇦🇸 American Samoa (AS)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'MP', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'MP'
-                    ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-                title="Northern Mariana Islands (Saipan, Tinian)"
-              >
-                🇲🇵 Northern Marianas (MP)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'ALL_50_STATES', cityFilter: '' }))}
-                className={`text-[11px] font-medium px-2.5 py-1 rounded-md border transition cursor-pointer ${
-                  filters.stateFilter === 'ALL_50_STATES'
-                    ? 'bg-slate-800 text-white border-slate-900 font-semibold shadow-xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-                title="Restrict to the 50 US States and District of Columbia"
-              >
-                🇺🇸 50 States & DC Only
+                🇻🇮 VI
               </button>
             </div>
 
-            {/* Popular City suggestions for selected jurisdiction */}
-            {popularCitiesForSelected.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
-                <span className="text-slate-500 font-medium">
-                  Cities in {getJurisdictionName(filters.stateFilter)}:
-                </span>
-                {popularCitiesForSelected.map((city) => {
-                  const isCityActive = filters.cityFilter?.toLowerCase() === city.toLowerCase();
-                  return (
-                    <button
-                      key={city}
-                      type="button"
-                      onClick={() => setFilters((prev) => ({ ...prev, cityFilter: isCityActive ? '' : city }))}
-                      className={`px-2 py-0.5 rounded border text-[11px] font-medium cursor-pointer transition ${
-                        isCityActive
-                          ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                          : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200 hover:border-blue-300'
-                      }`}
-                    >
-                      {isCityActive ? `✓ ${city}` : `+ ${city}`}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Federal Organization Presets Bar */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-5 pt-3 border-t border-slate-100">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Building className="w-3.5 h-3.5 text-blue-600" />
-                <span>Popular Federal Organization Fast Filters ({FEDERAL_ORGANIZATIONS.length} available in dropdown above)</span>
-              </span>
-              {filters.agencyFilter && (
-                <button
-                  type="button"
-                  onClick={() => setFilters((prev) => ({ ...prev, agencyFilter: '' }))}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium underline cursor-pointer"
-                >
-                  Clear Organization Filter
-                </button>
-              )}
-            </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {QUICK_PRESET_AGENCIES.map((preset) => {
-                const isSelected = filters.agencyFilter === preset.name;
+              <span className="text-slate-500 font-medium flex items-center gap-1 mr-1">
+                <Building className="w-3.5 h-3.5 text-blue-600" />
+                <span>Quick Agency:</span>
+              </span>
+              {[
+                { name: 'DEPARTMENT OF DEFENSE', label: 'DOD' },
+                { name: 'DEPT OF THE ARMY', label: 'Army' },
+                { name: 'DEPT OF THE NAVY', label: 'Navy' },
+                { name: 'DEPARTMENT OF HOMELAND SECURITY', label: 'DHS' },
+                { name: 'DEPARTMENT OF VETERANS AFFAIRS', label: 'VA' },
+              ].map((a) => {
+                const isSelected = filters.agencyFilter === a.name;
                 return (
                   <button
-                    key={preset.name}
+                    key={a.name}
                     type="button"
-                    onClick={() => setFilters((prev) => ({ ...prev, agencyFilter: isSelected ? '' : preset.name }))}
-                    className={`text-[11px] font-medium px-2 py-1 rounded-md border transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-700 font-semibold shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 hover:border-slate-300'
+                    onClick={() => setFilters((prev) => ({ ...prev, agencyFilter: isSelected ? '' : a.name }))}
+                    className={`px-2.5 py-1 rounded text-[11px] font-medium border transition cursor-pointer ${
+                      isSelected ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-semibold' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                     }`}
-                    title={preset.displayName}
                   >
-                    {preset.label}
+                    {a.label}
                   </button>
                 );
               })}

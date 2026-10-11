@@ -488,20 +488,6 @@ export const OpportunityTableView: React.FC<OpportunityTableViewProps> = ({
                           )}
                         </button>
 
-                        {onValidate && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onValidate(opp);
-                            }}
-                            className="text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded flex items-center gap-0.5 transition cursor-pointer"
-                            title="Validate contract ID & check live status on SAM.gov"
-                          >
-                            <span>Validate</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-blue-600" />
-                          </button>
-                        )}
 
                         <a
                           href={getSafeSamGovUrl(opp)}
@@ -682,15 +668,6 @@ export const OpportunityTableView: React.FC<OpportunityTableViewProps> = ({
                   {/* COLUMN 9: Actions */}
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {onValidate && (
-                        <button
-                          onClick={() => onValidate(opp)}
-                          className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-lg border border-blue-200 transition cursor-pointer"
-                          title="Validate Solicitation Number & check on SAM.gov"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                        </button>
-                      )}
 
                       <button
                         onClick={() => onInspect(opp)}
