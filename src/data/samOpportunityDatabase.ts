@@ -412,7 +412,7 @@ interface OpportunityTemplate {
 
 const TEMPLATES: OpportunityTemplate[] = [
   {
-    titlePrefix: 'Enterprise FHIR Clinical Health Data Exchange & Interoperability Modernization',
+    titlePrefix: 'Health Data Interoperability & Medical Records Pipeline',
     naicsCode: '541512',
     naicsTitle: 'Computer Systems Design Services',
     scopeOverview: 'Deploy and operate enterprise FHIR clinical data mediation services, zero-trust health data fabrics, cross-domain medical data sharing, and modernization of health digital records data exchange pipelines.',
@@ -726,7 +726,27 @@ function generateExtendedOpportunities(): SAMOpportunity[] {
       };
     }
 
-    // Specialized program qualifiers to guarantee authentic, distinct solicitation titles
+    // Specialized domain topics to guarantee 100% distinct, unique, agency-specific solicitation titles
+    const DOMAIN_TOPICS = [
+      'Zero Trust Cloud Migration & Security Controls',
+      'Healthcare Informatics & EHR Interoperability',
+      'Base Operations Support & Facility Infrastructure',
+      'High-Performance Compute & AI Data Pipeline',
+      'Cyber Threat Intelligence & SOC Response',
+      'Airfield & Tactical Pavement Resurfacing',
+      'Environmental Remediation & Sustainability',
+      'Medical Logistics & Supply Chain Automation',
+      'Enterprise Network Operations & Telecommunications',
+      'Full Lifecycle Systems Engineering & Integration',
+      'Scientific Advisory & Programmatic Support',
+      'Physical Security & Access Control Infrastructure',
+      'Boiler & Chiller Plant HVAC Renovation',
+      'Software Engineering & Containerization',
+      'Geospatial Intelligence & Mapping Services',
+      'Professional Staffing & Administrative Support',
+      'Vehicle Fleet Maintenance & Equipment Sustainment',
+    ];
+
     const PROGRAM_FOCUS_AREAS = [
       'Phase II Modernization & Expansion',
       'Operations, Maintenance & Technical Engineering',
@@ -740,9 +760,11 @@ function generateExtendedOpportunities(): SAMOpportunity[] {
       'Strategic Implementation & Capacity Support',
       'Targeted Field Execution & Logistics',
     ];
-    const programFocus = PROGRAM_FOCUS_AREAS[i % PROGRAM_FOCUS_AREAS.length];
-    const locQualifier = agency.state ? ` (${agency.city || agency.state})` : '';
-    const title = `${template.titlePrefix}: ${programFocus} - ${agency.subTier}${locQualifier}`;
+
+    const topic = DOMAIN_TOPICS[i % DOMAIN_TOPICS.length];
+    const focus = PROGRAM_FOCUS_AREAS[i % PROGRAM_FOCUS_AREAS.length];
+    const locQualifier = agency.state ? ` [${agency.city || agency.state}]` : '';
+    const title = `${agency.subTier}: ${topic} - ${focus}${locQualifier}`;
 
     const isRestrictedDefense = agency.department.includes('DEFENSE') || agency.department.includes('ARMY') || agency.department.includes('NAVY') || agency.department.includes('AIR FORCE') || agency.department.includes('DHA') || clearance === 'Top Secret';
     const oppAttachments = [

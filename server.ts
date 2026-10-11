@@ -1722,12 +1722,14 @@ app.post('/api/sam/opportunities', async (req, res) => {
         }
       });
 
-      // 2. Insert remaining curated database opportunities that weren't in live pull
-      ALL_SAM_OPPORTUNITIES.forEach((c) => {
-        if (!oppMap.has(c.noticeId)) {
-          oppMap.set(c.noticeId, c);
-        }
-      });
+      // 2. If no live opportunities were fetched, insert curated database opportunities
+      if (collectedRawOpps.length === 0) {
+        ALL_SAM_OPPORTUNITIES.forEach((c) => {
+          if (!oppMap.has(c.noticeId)) {
+            oppMap.set(c.noticeId, c);
+          }
+        });
+      }
 
       let mergedResults = Array.from(oppMap.values());
 
