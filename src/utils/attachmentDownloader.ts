@@ -1,4 +1,4 @@
-import { OpportunityAttachment, SAMOpportunity } from '../types/contract';
+import { OpportunityAttachment, SAMOpportunity } from '../types/contract.ts';
 
 export function generateAttachmentContent(att: OpportunityAttachment, opp: SAMOpportunity): string {
   const isPWS = att.name.toLowerCase().includes('pws') || att.name.toLowerCase().includes('sow') || att.name.toLowerCase().includes('spec');

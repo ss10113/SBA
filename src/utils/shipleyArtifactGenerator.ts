@@ -5,7 +5,7 @@ import {
   ShipleyProposalArtifact,
   ProposalArtifactType,
   ProposalArtifactStatus
-} from '../types/contract';
+} from '../types/contract.ts';
 
 /**
  * Maps a deliverable name to its corresponding Shipley proposal document type

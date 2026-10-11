@@ -107,7 +107,10 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
     setIsLoading(true);
     setSaveError(null);
     fetch('/api/config/ai')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setCurrentConfig(data);
         if (data.provider) setProvider(data.provider);
@@ -162,7 +165,12 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
           temperature,
         }),
       });
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server response error (HTTP ${res.status} ${res.statusText || ''})`.trim());
+      }
       setTestResult(data);
     } catch (err: any) {
       setTestResult({
@@ -191,7 +199,12 @@ export const AiConfigModal: React.FC<AiConfigModalProps> = ({
           temperature,
         }),
       });
-      const data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server response error (HTTP ${res.status} ${res.statusText || ''})`.trim());
+      }
       if (res.ok) {
         setSaveSuccess(true);
         setCurrentConfig(data.currentConfig || data);

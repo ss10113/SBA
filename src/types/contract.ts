@@ -1,4 +1,4 @@
-import { OpportunityCustomLaborItem, LaborCategoryBenchmark } from '../data/federalLaborCategories';
+import { OpportunityCustomLaborItem, LaborCategoryBenchmark } from '../data/federalLaborCategories.ts';
 export type { OpportunityCustomLaborItem, LaborCategoryBenchmark };
 
 export type OpportunityStatus = 'active' | 'inactive' | 'awarded';

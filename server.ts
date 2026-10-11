@@ -10,6 +10,14 @@ import { CURATED_SAM_OPPORTUNITIES } from './src/data/samCuratedData.ts';
 import { FEDERAL_ORGANIZATIONS, matchesFederalOrganization } from './src/data/federalOrganizations.ts';
 import { getNaicsDefinition } from './src/data/naicsDatabase.ts';
 import { US_TERRITORY_CODES, US_STATE_CODES } from './src/data/usJurisdictions.ts';
+import { 
+  buildHeuristicBidStrategy, 
+  buildHeuristicSowPlan, 
+  buildHeuristicArtifactEnhancement, 
+  executeGeminiStrategy, 
+  executeGeminiSowPlan, 
+  executeGeminiArtifactEnhancement 
+} from './src/utils/aiStrategyEngine.ts';
 
 dotenv.config();
 
@@ -1751,7 +1759,284 @@ app.post('/api/rfp-synopsis-deep-analysis', async (req, res) => {
   }
 });
 
+// ==============================================================================
+// AI AGENT & RUNTIME CONFIGURATION ROUTES
+// ==============================================================================
 
+// Endpoint to retrieve current AI agent configuration and key status
+app.get('/api/config/ai', (req, res) => {
+  const activeKey = (runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+  const hasKey = Boolean(activeKey);
+  const maskedKey = hasKey
+    ? (activeKey.length > 8
+        ? `${activeKey.substring(0, 4)}...${activeKey.substring(activeKey.length - 4)}`
+        : '••••••••')
+    : '';
+
+  return res.json({
+    provider: runtimeAiConfig.provider || 'gemini',
+    modelName: runtimeAiConfig.modelName || 'gemini-3.8-flash',
+    baseUrl: runtimeAiConfig.baseUrl || '',
+    temperature: runtimeAiConfig.temperature ?? 0.2,
+    hasKey,
+    maskedKey,
+    configured: hasKey,
+    providerStatus: hasKey ? 'Active & Ready' : 'Key required for live generative AI (fallback to federal heuristics)',
+  });
+});
+
+// Endpoint to save or update runtime AI configuration (including Gemini API key)
+app.post('/api/config/ai', (req, res) => {
+  try {
+    const { provider, apiKey, modelName, baseUrl, temperature } = req.body || {};
+
+    if (provider) {
+      runtimeAiConfig.provider = provider;
+      process.env.AI_PROVIDER = provider;
+    }
+
+    if (apiKey !== undefined && apiKey !== null) {
+      const cleanKey = String(apiKey).trim();
+      runtimeAiConfig.apiKey = cleanKey;
+      process.env.GEMINI_API_KEY = cleanKey;
+    }
+
+    if (modelName) {
+      runtimeAiConfig.modelName = String(modelName).trim();
+      process.env.AI_MODEL = runtimeAiConfig.modelName;
+    }
+
+    if (baseUrl !== undefined) {
+      runtimeAiConfig.baseUrl = String(baseUrl).trim();
+      process.env.AI_BASE_URL = runtimeAiConfig.baseUrl;
+    }
+
+    if (typeof temperature === 'number') {
+      runtimeAiConfig.temperature = temperature;
+    }
+
+    const activeKey = (runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+    const hasKey = Boolean(activeKey);
+    const maskedKey = hasKey
+      ? (activeKey.length > 8
+          ? `${activeKey.substring(0, 4)}...${activeKey.substring(activeKey.length - 4)}`
+          : '••••••••')
+      : '';
+
+    const currentConfig = {
+      provider: runtimeAiConfig.provider,
+      modelName: runtimeAiConfig.modelName,
+      baseUrl: runtimeAiConfig.baseUrl,
+      temperature: runtimeAiConfig.temperature,
+      hasKey,
+      maskedKey,
+      configured: hasKey,
+    };
+
+    return res.json({
+      success: true,
+      message: hasKey
+        ? `Configuration saved. Active provider: ${runtimeAiConfig.provider.toUpperCase()} (${runtimeAiConfig.modelName})`
+        : 'Configuration updated successfully.',
+      currentConfig,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to update AI configuration',
+    });
+  }
+});
+
+// Endpoint to test connection with Gemini API or custom AI endpoint
+app.post('/api/config/ai/test', async (req, res) => {
+  const { provider = 'gemini', apiKey, modelName, baseUrl } = req.body || {};
+  const targetProvider = provider || runtimeAiConfig.provider || 'gemini';
+  const targetModel = modelName || runtimeAiConfig.modelName || 'gemini-3.8-flash';
+  const activeKey = (apiKey || runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+
+  const start = Date.now();
+
+  try {
+    if (targetProvider === 'gemini') {
+      if (!activeKey) {
+        return res.json({
+          ok: false,
+          latencyMs: 0,
+          message: 'No Gemini API key provided or configured. Enter your Gemini API key from Google AI Studio to test.',
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: activeKey });
+      const prompt = 'Respond with exactly one sentence confirming connection: "Google Gemini connection established successfully."';
+      const aiResponse = await ai.models.generateContent({
+        model: targetModel,
+        contents: prompt,
+      });
+
+      const elapsed = Date.now() - start;
+      const text = aiResponse.text?.trim() || 'Connection verified successfully.';
+
+      return res.json({
+        ok: true,
+        latencyMs: elapsed,
+        model: targetModel,
+        message: `Verified! ${text}`,
+        details: `Successfully reached Gemini API in ${elapsed}ms via model ${targetModel}.`,
+      });
+    } else {
+      // Local Ollama / OpenAI-compatible endpoint test
+      const targetBaseUrl = baseUrl || runtimeAiConfig.baseUrl || 'http://localhost:11434/v1';
+      try {
+        const testRes = await fetch(`${targetBaseUrl}/models`, {
+          signal: AbortSignal.timeout(5000),
+          headers: activeKey ? { Authorization: `Bearer ${activeKey}` } : {},
+        });
+        const elapsed = Date.now() - start;
+        if (testRes.ok) {
+          return res.json({
+            ok: true,
+            latencyMs: elapsed,
+            model: targetModel,
+            message: `Successfully connected to endpoint ${targetBaseUrl} (${elapsed}ms).`,
+          });
+        } else {
+          return res.json({
+            ok: false,
+            latencyMs: elapsed,
+            message: `Endpoint returned HTTP ${testRes.status}: ${testRes.statusText}`,
+          });
+        }
+      } catch (e: any) {
+        return res.json({
+          ok: false,
+          latencyMs: Date.now() - start,
+          message: `Could not reach ${targetBaseUrl}: ${e.message}. If using self-hosted Ollama, verify it is running with OLLAMA_ORIGINS="*"`,
+        });
+      }
+    }
+  } catch (err: any) {
+    const elapsed = Date.now() - start;
+    return res.json({
+      ok: false,
+      latencyMs: elapsed,
+      message: `Gemini API handshake error: ${err.message || 'Invalid API key or network error'}`,
+    });
+  }
+});
+
+// Endpoint to generate Bid Strategy and Capture Plan (Gemini AI with heuristics fallback)
+app.post('/api/generate-strategy', async (req, res) => {
+  try {
+    const { opportunity, profile, focusArea } = req.body || {};
+    if (!opportunity) {
+      return res.status(400).json({ error: 'Missing opportunity payload' });
+    }
+
+    const activeKey = (runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+    if (activeKey && runtimeAiConfig.provider === 'gemini') {
+      try {
+        const ai = new GoogleGenAI({ apiKey: activeKey });
+        const strategy = await executeGeminiStrategy(
+          ai,
+          runtimeAiConfig.modelName || 'gemini-3.8-flash',
+          opportunity,
+          profile,
+          focusArea
+        );
+        return res.json({ strategy, source: 'gemini-ai' });
+      } catch (geminiErr: any) {
+        console.warn('Gemini strategy generation failed, falling back to heuristics:', geminiErr.message);
+      }
+    }
+
+    // Heuristics fallback
+    const fallbackStrategy = buildHeuristicBidStrategy(opportunity, profile, focusArea);
+    return res.json({ strategy: fallbackStrategy, source: 'heuristics' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint to enhance Shipley Proposal Artifacts (Gemini AI with heuristics fallback)
+app.post('/api/enhance-shipley-artifact', async (req, res) => {
+  try {
+    const { artifact, opportunity, profile, enhancementInstruction } = req.body || {};
+    if (!artifact) {
+      return res.status(400).json({ error: 'Missing artifact payload' });
+    }
+
+    const activeKey = (runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+    if (activeKey && runtimeAiConfig.provider === 'gemini') {
+      try {
+        const ai = new GoogleGenAI({ apiKey: activeKey });
+        const enhancedContent = await executeGeminiArtifactEnhancement(
+          ai,
+          runtimeAiConfig.modelName || 'gemini-3.8-flash',
+          artifact,
+          opportunity,
+          profile,
+          enhancementInstruction
+        );
+        return res.json({ enhancedContent, source: 'gemini-ai' });
+      } catch (geminiErr: any) {
+        console.warn('Gemini artifact enhancement failed, falling back to heuristics:', geminiErr.message);
+      }
+    }
+
+    // Heuristics fallback
+    const enhancedContent = buildHeuristicArtifactEnhancement(
+      artifact,
+      opportunity,
+      profile,
+      enhancementInstruction
+    );
+    return res.json({ enhancedContent, source: 'heuristics' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint to generate SOW Resources & Execution Strategy (Gemini AI with heuristics fallback)
+app.post('/api/sow-resources-strategy', async (req, res) => {
+  try {
+    const { opportunity, profile, focusDirective, attachments, attachmentIntelligence } = req.body || {};
+    if (!opportunity) {
+      return res.status(400).json({ error: 'Missing opportunity payload' });
+    }
+
+    const activeKey = (runtimeAiConfig.apiKey || process.env.GEMINI_API_KEY || '').trim();
+    if (activeKey && runtimeAiConfig.provider === 'gemini') {
+      try {
+        const ai = new GoogleGenAI({ apiKey: activeKey });
+        const plan = await executeGeminiSowPlan(
+          ai,
+          runtimeAiConfig.modelName || 'gemini-3.8-flash',
+          opportunity,
+          profile,
+          focusDirective,
+          attachments,
+          attachmentIntelligence
+        );
+        return res.json({ plan, source: 'gemini-ai' });
+      } catch (geminiErr: any) {
+        console.warn('Gemini SOW execution plan failed, falling back to heuristics:', geminiErr.message);
+      }
+    }
+
+    // Heuristics fallback
+    const fallbackPlan = buildHeuristicSowPlan(
+      opportunity,
+      profile,
+      focusDirective,
+      attachments,
+      attachmentIntelligence
+    );
+    return res.json({ plan: fallbackPlan, source: 'heuristics' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';

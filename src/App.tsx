@@ -656,7 +656,10 @@ export default function App() {
   // Fetch current AI Agent & Model configuration
   const fetchAiConfig = () => {
     fetch('/api/config/ai')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => setAiConfigStatus(data))
       .catch((e) => console.warn('Could not fetch AI config:', e));
   };

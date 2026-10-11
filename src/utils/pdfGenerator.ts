@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
-import { OpportunityAttachment, SAMOpportunity } from '../types/contract';
-import { generateAttachmentContent } from './attachmentDownloader';
+import { OpportunityAttachment, SAMOpportunity } from '../types/contract.ts';
+import { generateAttachmentContent } from './attachmentDownloader.ts';
 
 /**
  * Generates an authentic, publication-quality Federal Procurement PDF Blob

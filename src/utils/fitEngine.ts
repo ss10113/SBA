@@ -1,4 +1,4 @@
-import { SAMOpportunity, BusinessProfile, FitScore } from '../types/contract';
+import { SAMOpportunity, BusinessProfile, FitScore } from '../types/contract.ts';
 
 const CLEARANCE_LEVELS: Record<string, number> = {
   'None': 0,

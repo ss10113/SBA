@@ -1,4 +1,4 @@
-import { SAMOpportunity, FilterState } from '../types/contract';
+import { SAMOpportunity, FilterState } from '../types/contract.ts';
 
 // Helper to escape CSV cell content
 function escapeCsvCell(val: any): string {

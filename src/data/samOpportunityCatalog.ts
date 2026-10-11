@@ -1,6 +1,6 @@
-import { SAMOpportunity, SetAsideType, NoticeType } from '../types/contract';
-import { CURATED_SAM_OPPORTUNITIES } from './samCuratedData';
-import { FEDERAL_ORGANIZATIONS } from './federalOrganizations';
+import { SAMOpportunity, SetAsideType, NoticeType } from '../types/contract.ts';
+import { CURATED_SAM_OPPORTUNITIES } from './samCuratedData.ts';
+import { FEDERAL_ORGANIZATIONS } from './federalOrganizations.ts';
 
 // Pre-defined realistic contract scopes across federal agencies
 interface ScopeTemplate {
