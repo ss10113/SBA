@@ -45,6 +45,8 @@ import {
   downloadConsolidatedShipleyPackage 
 } from '../utils/shipleyArtifactGenerator';
 
+import { ProposalPublisherModule } from './ProposalPublisherModule.tsx';
+
 interface StrategyBusinessPlanModalProps {
   opportunity: SAMOpportunity | null;
   currentProfile: BusinessProfile;
@@ -60,7 +62,7 @@ export const StrategyBusinessPlanModal: React.FC<StrategyBusinessPlanModalProps>
   onClose,
   onSaveToPipeline,
 }) => {
-  const [activeStrategyTab, setActiveStrategyTab] = useState<'win_strategy' | 'business_plan' | 'compliance' | 'teaming' | 'pricing' | 'timeline'>('win_strategy');
+  const [activeStrategyTab, setActiveStrategyTab] = useState<'win_strategy' | 'business_plan' | 'compliance' | 'teaming' | 'pricing' | 'timeline' | 'publisher'>('win_strategy');
   const [strategy, setStrategy] = useState<BidStrategy | null>(existingStrategy || null);
   const [loading, setLoading] = useState(false);
   const [focusArea, setFocusArea] = useState('Comprehensive Win Strategy & Proposal Business Plan');

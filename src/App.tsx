@@ -56,6 +56,7 @@ import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { OpportunityBrowsingControls } from './components/OpportunityBrowsingControls';
 import { FacetedFilterRail } from './components/FacetedFilterRail';
+import { HorizontalFilterPanel } from './components/HorizontalFilterPanel';
 import { FeedControlBar } from './components/FeedControlBar';
 import { OpportunityCard } from './components/OpportunityCard';
 import { OpportunityTableView } from './components/OpportunityTableView';
@@ -1097,10 +1098,10 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+      <main className="flex-1 max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
         {/* VIEW 1: Canvass SAM.gov */}
         {activeTab === 'canvass' && (
-          <div className="space-y-6">
+          <div className="space-y-5 w-full">
             {/* Sync Feedback Toast Notification */}
             {syncToast && (
               <div
@@ -1169,79 +1170,71 @@ export default function App() {
               </div>
             )}
 
-            {/* Amazon / Meta 2-Column Responsive Layout */}
-            <div className="flex flex-col lg:flex-row items-start gap-5">
-              {/* Left Column: Faceted Filter Rail (Amazon Filter Rail pattern) */}
-              <aside className="w-full lg:w-72 xl:w-80 shrink-0">
-                <FacetedFilterRail
-                  filters={filters}
-                  setFilters={setFilters}
-                  totalMatches={filteredOpportunities.length}
-                  totalSamDatabaseRecords={totalSamDatabaseRecords}
-                  databaseStats={databaseStats}
-                  currentProfile={currentProfile}
-                  profiles={profiles}
-                  onSelectProfile={handleSelectPreset}
-                  onReset={() => setFilters(DEFAULT_FILTERS)}
-                  availableCities={availableCities}
-                  isMobileOpen={isMobileFilterOpen}
-                  onCloseMobile={() => setIsMobileFilterOpen(false)}
-                />
-              </aside>
+            {/* Top Horizontal Filter Control Panel */}
+            <HorizontalFilterPanel
+              filters={filters}
+              setFilters={setFilters}
+              totalMatches={filteredOpportunities.length}
+              totalSamDatabaseRecords={totalSamDatabaseRecords}
+              databaseStats={databaseStats}
+              currentProfile={currentProfile}
+              profiles={profiles}
+              onSelectProfile={handleSelectPreset}
+              onReset={() => setFilters(DEFAULT_FILTERS)}
+              availableCities={availableCities}
+            />
 
-              {/* Right Column: Main Feed Viewport (Meta Feed / Amazon Products stream) */}
-              <section className="flex-1 min-w-0 w-full space-y-4">
-                {/* Streamlined Single-Row Feed Control Bar */}
-                <FeedControlBar
-                  filters={filters}
-                  setFilters={setFilters}
-                  totalMatches={filteredOpportunities.length}
-                  displayedCount={displayedOpportunities.length}
-                  totalSamDatabaseRecords={totalSamDatabaseRecords}
-                  databaseStats={databaseStats}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  browseMode={browseMode}
-                  setBrowseMode={setBrowseMode}
-                  onOpenMobileFilters={() => setIsMobileFilterOpen(true)}
-                  onExportCsv={handleExportCsv}
-                  onExportJson={handleExportJson}
-                />
+            {/* Streamlined Single-Row Feed Control Bar */}
+            <FeedControlBar
+              filters={filters}
+              setFilters={setFilters}
+              totalMatches={filteredOpportunities.length}
+              displayedCount={displayedOpportunities.length}
+              totalSamDatabaseRecords={totalSamDatabaseRecords}
+              databaseStats={databaseStats}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              browseMode={browseMode}
+              setBrowseMode={setBrowseMode}
+              onOpenMobileFilters={() => setIsMobileFilterOpen(true)}
+              onExportCsv={handleExportCsv}
+              onExportJson={handleExportJson}
+            />
 
-                {/* Opportunities Display (Table Ledger or Feed Cards) */}
-                {filteredOpportunities.length > 0 ? (
-                  <div className="space-y-4">
-                    {viewMode === 'table' ? (
-                      <OpportunityTableView
-                        opportunities={displayedOpportunities}
+            {/* Full-Width Tabular Results & Feed Viewport */}
+            {filteredOpportunities.length > 0 ? (
+              <div className="space-y-4 w-full">
+                {viewMode === 'table' ? (
+                  <OpportunityTableView
+                    opportunities={displayedOpportunities}
+                    currentProfile={currentProfile}
+                    onInspect={(o) => setSelectedOppForDetail(o)}
+                    onGeneratePlan={(o) => openStrategyModal(o)}
+                    onTogglePipeline={handleTogglePipeline}
+                    onFilterByAgency={handleFilterByAgency}
+                    onValidate={(o) => handleOpenValidation(o)}
+                    isPipelineMap={isPipelineMap}
+                    selectedAgencyFilter={filters.agencyFilter}
+                    sortBy={filters.sortBy}
+                    onSortChange={(newSort) => setFilters((prev) => ({ ...prev, sortBy: newSort }))}
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {displayedOpportunities.map((opp, idx) => (
+                      <OpportunityCard
+                        key={`${opp.noticeId || 'card'}-${opp.solicitationNumber || idx}-${idx}`}
+                        opportunity={opp}
                         currentProfile={currentProfile}
                         onInspect={(o) => setSelectedOppForDetail(o)}
                         onGeneratePlan={(o) => openStrategyModal(o)}
                         onTogglePipeline={handleTogglePipeline}
                         onFilterByAgency={handleFilterByAgency}
                         onValidate={(o) => handleOpenValidation(o)}
-                        isPipelineMap={isPipelineMap}
-                        selectedAgencyFilter={filters.agencyFilter}
-                        sortBy={filters.sortBy}
-                        onSortChange={(newSort) => setFilters((prev) => ({ ...prev, sortBy: newSort }))}
+                        isInPipeline={Boolean(isPipelineMap[opp.noticeId])}
                       />
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {displayedOpportunities.map((opp, idx) => (
-                          <OpportunityCard
-                            key={`${opp.noticeId || 'card'}-${opp.solicitationNumber || idx}-${idx}`}
-                            opportunity={opp}
-                            currentProfile={currentProfile}
-                            onInspect={(o) => setSelectedOppForDetail(o)}
-                            onGeneratePlan={(o) => openStrategyModal(o)}
-                            onTogglePipeline={handleTogglePipeline}
-                            onFilterByAgency={handleFilterByAgency}
-                            onValidate={(o) => handleOpenValidation(o)}
-                            isInPipeline={Boolean(isPipelineMap[opp.noticeId])}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    ))}
+                  </div>
+                )}
 
                     {/* Bottom Pagination / Infinite Scroll Bar */}
                     {browseMode === 'paged' && Math.ceil(filteredOpportunities.length / pageSize) > 1 && (
@@ -1353,8 +1346,6 @@ export default function App() {
                     </button>
                   </div>
                 )}
-              </section>
-            </div>
 
             {/* Floating Back to Top Button */}
             {showScrollTop && (

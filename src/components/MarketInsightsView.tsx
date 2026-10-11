@@ -102,7 +102,11 @@ const SAMPLE_CALC_RATES: Record<string, CalcLaborCategory> = {
   },
 };
 
+import { AgencyContactsSearch } from './AgencyContactsSearch.tsx';
+
 export const MarketInsightsView: React.FC = () => {
+  const [activeInsightTab, setActiveInsightTab] = useState<'contacts' | 'subcontracting' | 'early_intel' | 'gsa_calc'>('contacts');
+
   // Interactive FAR 52.219-14 Calculator State
   const [contractType, setContractType] = useState<'services' | 'general_construction' | 'specialty_trade' | 'supplies'>('services');
   const [totalLaborCost, setTotalLaborCost] = useState<number>(500000);
@@ -126,18 +130,60 @@ export const MarketInsightsView: React.FC = () => {
         <div className="flex items-center gap-2 mb-1">
           <Award className="w-5 h-5 text-blue-400" />
           <span className="text-xs font-mono font-bold tracking-wider text-blue-300 uppercase">
-            Federal Procurement Intelligence
+            Federal Procurement Intelligence Suite
           </span>
         </div>
         <h2 className="text-xl sm:text-2xl font-bold">
-          SBA Contractor Win Insights & Compliance Playbook
+          Market Intelligence & Agency Contacts Search
         </h2>
         <p className="text-xs sm:text-sm text-slate-300 max-w-2xl mt-1 leading-relaxed">
-          Federal small business contracting goals, statutory limitations on subcontracting under FAR Part 19, and competitive advantages for certified 8(a), SDVOSB, WOSB, and HUBZone enterprises.
+          Agency contracting officer directory, early contract signals (sources sought / presolicitations), statutory small business utilization goals, and GSA CALC labor rate surveys.
         </p>
+
+        {/* Sub-Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t border-slate-700/80 text-xs font-semibold">
+          <button
+            onClick={() => setActiveInsightTab('contacts')}
+            className={`px-3.5 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+              activeInsightTab === 'contacts'
+                ? 'bg-blue-600 text-white border-blue-400 font-bold shadow-xs'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 border-slate-700'
+            }`}
+          >
+            <span>👤 Agency Contacts Search</span>
+          </button>
+
+          <button
+            onClick={() => setActiveInsightTab('subcontracting')}
+            className={`px-3.5 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+              activeInsightTab === 'subcontracting'
+                ? 'bg-blue-600 text-white border-blue-400 font-bold shadow-xs'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 border-slate-700'
+            }`}
+          >
+            <span>⚖️ Statutory Goals & Subcontracting</span>
+          </button>
+
+          <button
+            onClick={() => setActiveInsightTab('gsa_calc')}
+            className={`px-3.5 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+              activeInsightTab === 'gsa_calc'
+                ? 'bg-blue-600 text-white border-blue-400 font-bold shadow-xs'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 border-slate-700'
+            }`}
+          >
+            <span>📊 GSA CALC Rates Benchmarks</span>
+          </button>
+        </div>
       </div>
 
-      {/* Federal 23% Statutory Goals Grid */}
+      {/* SUB-TAB 1: Agency Contacts Search */}
+      {activeInsightTab === 'contacts' && <AgencyContactsSearch />}
+
+      {/* SUB-TAB 2: Statutory Goals & Subcontracting Calculator */}
+      {activeInsightTab === 'subcontracting' && (
+        <>
+          {/* Federal 23% Statutory Goals Grid */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
@@ -386,9 +432,12 @@ export const MarketInsightsView: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
 
-      {/* NEW: GSA Acquisition Gateway Public API (AG-API) & CALC Pricing Intelligence Section */}
-      <div className="bg-white rounded-2xl border-2 border-indigo-200 shadow-md p-6 space-y-6">
+      {/* SUB-TAB 3: GSA CALC Labor Rate Benchmarks */}
+      {activeInsightTab === 'gsa_calc' && (
+        <div className="bg-white rounded-2xl border-2 border-indigo-200 shadow-md p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -546,7 +595,8 @@ export const MarketInsightsView: React.FC = () => {
             );
           })()}
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
