@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { 
   ShieldCheck, 
   Building2, 
@@ -7,6 +7,8 @@ import {
   BarChart3, 
   Sparkles,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Cpu,
   Server,
   Zap,
@@ -77,6 +79,15 @@ export const Header: React.FC<HeaderProps> = ({
   const [showSamKey, setShowSamKey] = React.useState(false);
   const [savingSamKey, setSavingSamKey] = React.useState(false);
   const [samKeyFeedback, setSamKeyFeedback] = React.useState<{ text: string; ok: boolean } | null>(null);
+
+  const navScrollRef = useRef<HTMLElement>(null);
+
+  const scrollNav = (dir: 'left' | 'right') => {
+    if (navScrollRef.current) {
+      const amount = dir === 'left' ? -200 : 200;
+      navScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
 
   const handleSaveSamKey = async () => {
     setSavingSamKey(true);
@@ -286,78 +297,101 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none text-xs sm:text-sm">
+        {/* Navigation Tabs with Scroll Controls */}
+        <div className="relative flex items-center gap-1">
           <button
-            onClick={() => setActiveTab('canvass')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'canvass'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
+            type="button"
+            onClick={() => scrollNav('left')}
+            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer border border-slate-700 shrink-0 md:hidden"
+            title="Scroll navigation tabs left"
           >
-            <Briefcase className="w-4 h-4" />
-            <span>Canvass SAM.gov</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-              activeTab === 'canvass' ? 'bg-blue-800 text-blue-100' : 'bg-slate-800 text-slate-300'
-            }`}>
-              {totalOpportunitiesCount}
-            </span>
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setActiveTab('pipeline')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'pipeline'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
+          <nav 
+            ref={navScrollRef}
+            className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900 text-xs sm:text-sm scroll-smooth"
           >
-            <Kanban className="w-4 h-4" />
-            <span>Bid Pipeline</span>
-            {savedBidsCount > 0 && (
-              <span className="bg-amber-500 text-slate-950 font-bold text-[10px] px-1.5 py-0.2 rounded-full font-mono">
-                {savedBidsCount}
+            <button
+              onClick={() => setActiveTab('canvass')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'canvass'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Canvass SAM.gov</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                activeTab === 'canvass' ? 'bg-blue-800 text-blue-100' : 'bg-slate-800 text-slate-300'
+              }`}>
+                {totalOpportunitiesCount}
               </span>
-            )}
-          </button>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('pipeline')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'pipeline'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Kanban className="w-4 h-4" />
+              <span>Bid Pipeline</span>
+              {savedBidsCount > 0 && (
+                <span className="bg-amber-500 text-slate-950 font-bold text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                  {savedBidsCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('insights')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'insights'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>SBA Insights</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('labor_rates')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'labor_rates'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <span>Labor Rates & CLINs</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'profile'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <Building2 className="w-4 h-4 text-blue-400" />
+              <span>Business Profile</span>
+            </button>
+          </nav>
 
           <button
-            onClick={() => setActiveTab('insights')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'insights'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
+            type="button"
+            onClick={() => scrollNav('right')}
+            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer border border-slate-700 shrink-0 md:hidden"
+            title="Scroll navigation tabs right"
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>SBA Insights</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
-
-          <button
-            onClick={() => setActiveTab('labor_rates')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'labor_rates'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-            <span>Labor Rates & CLINs</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'profile'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Business Profile</span>
-          </button>
-        </nav>
+        </div>
 
         {/* Desktop Controls (AI Config & Profile Switcher) */}
         <div className="hidden md:flex items-center gap-2.5">

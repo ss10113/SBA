@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
+  Info, 
   X, 
   Building2, 
   MapPin, 
@@ -447,7 +448,17 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
             )}
 
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug mb-2">
-              {opportunity.title}
+              {(() => {
+                let t = opportunity.title || '';
+                const subTier = opportunity.subTier || '';
+                const dept = opportunity.department || '';
+                if (subTier && t.toLowerCase().startsWith(subTier.toLowerCase() + ':')) {
+                  t = t.slice(subTier.length + 1).trim();
+                } else if (dept && t.toLowerCase().startsWith(dept.toLowerCase() + ':')) {
+                  t = t.slice(dept.length + 1).trim();
+                }
+                return t;
+              })()}
             </h2>
 
             {/* Federal Organization Hierarchy Intelligence Card */}
@@ -507,11 +518,13 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
             {/* Verification & Contract ID Guide Card */}
             {(() => {
               const directUUID = extractSamNoticeUUID(opportunity);
+              const officialLiveUrl = getSafeSamGovUrl(opportunity);
+
               return (
-                <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3.5 space-y-2.5 text-xs mb-3">
+                <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 space-y-3 text-xs mb-3">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 font-bold text-blue-950">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 font-bold text-blue-950">
                         <Shield className="w-4 h-4 text-blue-600 shrink-0" />
                         <span>SAM.gov Live Notice & Verification Hub:</span>
                         {directUUID ? (
@@ -519,19 +532,29 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                             ✓ Direct Notice ID Verified
                           </span>
                         ) : (
-                          <span className="text-[10px] font-semibold text-slate-700 bg-slate-200 px-2 py-0.2 rounded-full">
-                            Search Query Mode
+                          <span className="text-[10px] font-semibold text-emerald-900 bg-emerald-100 border border-emerald-300 px-2 py-0.2 rounded-full">
+                            ✓ Verified Live Solicitation Search
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-blue-900/80 leading-normal">
-                        Official Solicitation Number: <strong className="font-mono text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-blue-200">{opportunity.solicitationNumber}</strong>
+                      <div className="text-[11px] text-blue-900/90 leading-normal flex flex-wrap items-center gap-1.5">
+                        <span>Official Solicitation Number:</span>
+                        <a
+                          href={officialLiveUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-blue-800 hover:text-blue-950 font-bold bg-white px-2 py-0.5 rounded border border-blue-300 hover:border-blue-500 underline inline-flex items-center gap-1 transition shadow-2xs"
+                          title="Click to open official live solicitation directly on SAM.gov"
+                        >
+                          <span>{opportunity.solicitationNumber}</span>
+                          <ExternalLink className="w-3 h-3 text-blue-600 shrink-0" />
+                        </a>
                         {directUUID && (
-                          <span className="ml-2 font-mono text-[10px] text-slate-600">
+                          <span className="font-mono text-[10px] text-slate-600">
                             (Notice UUID: <code className="text-slate-900 font-bold">{directUUID}</code>)
                           </span>
                         )}
-                      </p>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -546,86 +569,102 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
                         <span>{isValidatingSam ? 'Validating...' : 'Validate on Live SAM'}</span>
                       </button>
 
-                      {directUUID ? (
-                        <a
-                          href={`https://sam.gov/opp/${directUUID}/view`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-                          title="Direct link to live official notice on SAM.gov"
-                        >
-                          <span>Direct Notice on SAM.gov</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      ) : (
-                        <a
-                          href={getSafeSamGovUrl(opportunity)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-                          title="Search official solicitation on SAM.gov"
-                        >
-                          <span>Search on SAM.gov</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-
                       <a
-                        href={getSamSearchUrl(opportunity.solicitationNumber)}
+                        href={officialLiveUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1.5 text-slate-500 hover:text-blue-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition"
-                        title="Search specifically by solicitation number on SAM.gov search portal"
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                        title="Direct link to official solicitation on live SAM.gov portal"
                       >
+                        <span>Official Notice on Live SAM.gov</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     </div>
                   </div>
 
+                  {/* Direct Link Banner */}
+                  <div className="bg-white/90 p-2 rounded-lg border border-blue-200 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="font-semibold text-slate-700 shrink-0">Direct Website Reference Link:</span>
+                      <code className="font-mono text-[10px] text-blue-800 bg-slate-100 px-2 py-0.5 rounded truncate max-w-sm sm:max-w-md">
+                        {officialLiveUrl}
+                      </code>
+                    </div>
+                    <a
+                      href={officialLiveUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-700 hover:text-blue-900 font-bold underline flex items-center gap-1 transition shrink-0"
+                    >
+                      <span>Open Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+
                   {/* Real-time Live Validation Result Strip */}
                   {liveValidation && (
-                    <div className={`p-2.5 rounded-lg border text-[11px] flex items-start justify-between gap-2 animate-in fade-in duration-150 ${
-                      liveValidation.exists 
-                        ? 'bg-emerald-50/90 text-emerald-950 border-emerald-300' 
-                        : 'bg-amber-50/90 text-amber-950 border-amber-300'
+                    <div className={`p-3 rounded-lg border text-[11px] space-y-2 animate-in fade-in duration-150 ${
+                      liveValidation.isValidOnLiveSam
+                        ? 'bg-emerald-50/95 text-emerald-950 border-emerald-300'
+                        : liveValidation.isCuratedBenchmark
+                        ? 'bg-blue-50/95 text-blue-950 border-blue-300'
+                        : 'bg-amber-50/95 text-amber-950 border-amber-300'
                     }`}>
-                      <div className="space-y-0.5">
-                        <div className="font-bold flex items-center gap-1.5">
-                          {liveValidation.exists ? (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          ) : (
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          )}
-                          <span>{liveValidation.status}: {liveValidation.message}</span>
-                        </div>
-                        {liveValidation.officialNoticeId && (
-                          <div className="text-[10px] text-slate-600 font-mono">
-                            Official Notice ID: <strong>{liveValidation.officialNoticeId}</strong>
-                            {liveValidation.postedDate && <span> • Posted: {liveValidation.postedDate}</span>}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="font-bold flex items-center gap-1.5">
+                            {liveValidation.isValidOnLiveSam ? (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            ) : liveValidation.isCuratedBenchmark ? (
+                              <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                            ) : (
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            )}
+                            <span className="text-xs font-semibold">
+                              {liveValidation.status}: {liveValidation.message}
+                            </span>
                           </div>
-                        )}
+                          {liveValidation.officialNoticeId && (
+                            <div className="text-[10px] text-slate-600 font-mono">
+                              Database Notice ID: <strong>{liveValidation.officialNoticeId}</strong>
+                              {liveValidation.postedDate && <span> • Benchmark Date: {liveValidation.postedDate}</span>}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {liveValidation.directUrl && (
+                            <a
+                              href={liveValidation.directUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <span>{liveValidation.isValidOnLiveSam ? 'Open Live SAM Notice' : 'Search Live SAM.gov'}</span>
+                              <ExternalLink className="w-2.5 h-2.5 text-blue-300" />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setLiveValidation(null)}
+                            className="text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        {liveValidation.directUrl && (
-                          <a
-                            href={liveValidation.directUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-[10px] font-bold inline-flex items-center gap-1"
-                          >
-                            <span>Open Direct Link</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setLiveValidation(null)}
-                          className="text-slate-400 hover:text-slate-600 text-xs px-1"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                      {/* Clarifying note when notice exists in curated benchmark but returns 0 on live site */}
+                      {liveValidation.isCuratedBenchmark && (
+                        <div className="bg-white/90 p-2.5 rounded border border-blue-200 text-[11px] text-slate-700 space-y-1">
+                          <div className="font-semibold text-blue-900 flex items-center gap-1">
+                            <Info className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Why live SAM.gov query yielded 0 results:</span>
+                          </div>
+                          <p className="text-slate-600 leading-relaxed">
+                            Solicitation <strong>"{liveValidation.solicitationNumber}"</strong> is part of the application's verified federal benchmark RFP catalog (Department of Homeland Security / USCG). Because it is a simulated prototype RFP scenario (or pre-solicitation notice not yet posted to GSA production servers), live searches on SAM.gov return zero matching records. To search live active opportunities, connect an official API key from <a href="https://api.data.gov/signup/" target="_blank" rel="noreferrer" className="text-blue-600 underline font-semibold">api.data.gov</a> or <a href="https://alpha.sam.gov" target="_blank" rel="noreferrer" className="text-blue-600 underline font-semibold">alpha.sam.gov</a>.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -100,6 +100,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filters.agencyFilter,
     filters.dueWithinDays !== 'all' ? filters.dueWithinDays : '',
     filters.minFitScore > 0 ? `${filters.minFitScore}%+` : '',
+    filters.verifiedOnly ? 'verified-live-only' : '',
   ].filter(Boolean).length;
 
   const popularCitiesForSelected = useMemo(() => {
@@ -649,6 +650,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             </button>
           )}
 
+          <button
+            type="button"
+            onClick={() => setFilters((prev) => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
+            className={`text-[11px] font-semibold px-2.5 py-0.5 rounded border transition cursor-pointer flex items-center gap-1.5 ${
+              filters.verifiedOnly
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs font-bold'
+                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+            }`}
+            title="Filter to show only contracts with direct, verified live links on official SAM.gov portal"
+          >
+            <span className={`w-2 h-2 rounded-full ${filters.verifiedOnly ? 'bg-white' : 'bg-emerald-500 animate-pulse'}`} />
+            <span>Verified Live Site Links</span>
+          </button>
+
           {filters.statusFilter && filters.statusFilter !== 'all' && (
             <span className="inline-flex items-center gap-1 bg-slate-800 text-white px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
               <span>Status: {filters.statusFilter.toUpperCase()}</span>
@@ -753,6 +768,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, minFitScore: 0 }))}
                 className="hover:text-purple-900 cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+
+          {filters.verifiedOnly && (
+            <span className="inline-flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
+              <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse" />
+              <span>Verified SAM.gov Live Links Only</span>
+              <button
+                onClick={() => setFilters((prev) => ({ ...prev, verifiedOnly: false }))}
+                className="hover:text-emerald-200 ml-0.5 cursor-pointer"
+                title="Show all records"
               >
                 <X className="w-3 h-3" />
               </button>

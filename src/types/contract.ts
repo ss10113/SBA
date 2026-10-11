@@ -110,6 +110,8 @@ export interface SAMOpportunity {
   status?: OpportunityStatus;
   awardeeInfo?: AwardeeInfo;
   customLaborItems?: OpportunityCustomLaborItem[];
+  isLiveVerified?: boolean;
+  verifiedLiveSite?: boolean;
 }
 
 export interface BusinessProfile {
@@ -364,6 +366,7 @@ export interface FilterState {
   minVal: number;
   maxVal: number;
   minFitScore: number;
+  verifiedOnly?: boolean;
   sortBy:
     | 'deadline_asc'
     | 'deadline_desc'

@@ -508,11 +508,24 @@ export const OpportunityTableView: React.FC<OpportunityTableViewProps> = ({
                           target="_blank"
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs hover:shadow-xs cursor-pointer"
-                          title="Open official live solicitation directly on SAM.gov"
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs hover:shadow-xs cursor-pointer ${
+                            opp.isLiveVerified || opp.verifiedLiveSite || (opp.noticeId && /^[a-f0-9]{32}$/i.test(opp.noticeId))
+                              ? 'bg-emerald-600 text-white border border-emerald-700 font-extrabold shadow-2xs'
+                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          }`}
+                          title={
+                            opp.isLiveVerified || opp.verifiedLiveSite || (opp.noticeId && /^[a-f0-9]{32}$/i.test(opp.noticeId))
+                              ? 'Verified direct contract notice link on live SAM.gov portal'
+                              : 'Open official live solicitation query search on SAM.gov'
+                          }
                         >
-                          <span>Live SAM.gov</span>
-                          <ExternalLink className="w-2.5 h-2.5 text-emerald-600" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                          <span>
+                            {opp.isLiveVerified || opp.verifiedLiveSite || (opp.noticeId && /^[a-f0-9]{32}$/i.test(opp.noticeId))
+                              ? 'Verified Live Link'
+                              : 'Live SAM.gov'}
+                          </span>
+                          <ExternalLink className="w-2.5 h-2.5" />
                         </a>
 
                         <span className="text-[10px] font-medium bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, 
   ShieldCheck, 
@@ -17,7 +17,9 @@ import {
   FolderPlus,
   Edit3,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { BusinessProfile } from '../types/contract';
 import { POPULAR_NAICS, US_STATES, US_TERRITORIES, US_STATES_LIST } from '../data/samCuratedData';
@@ -175,6 +177,15 @@ export const BusinessProfileView: React.FC<BusinessProfileViewProps> = ({
   if (profile.coreCapabilities.length >= 3) strength += 20;
   if (profile.pastPerformanceSummary.length > 30) strength += 20;
 
+  const presetScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollPresets = (direction: 'left' | 'right') => {
+    if (presetScrollRef.current) {
+      const distance = direction === 'left' ? -260 : 260;
+      presetScrollRef.current.scrollBy({ left: distance, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Top Presets Switcher Bar */}
@@ -214,15 +225,45 @@ export const BusinessProfileView: React.FC<BusinessProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Preset Badges Grid */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Scroll Header Indicator & Left/Right Buttons */}
+        <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-1">
+          <span className="flex items-center gap-1.5 text-blue-700 font-semibold bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+            <span>◄ Scroll horizontally to access all preset buttons</span>
+            <span className="font-mono text-[10px] text-blue-600">({profiles.length} available) ►</span>
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scrollPresets('left')}
+              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+              title="Scroll preset buttons left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollPresets('right')}
+              className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+              title="Scroll preset buttons right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Horizontally Scrollable Preset Badges Bar */}
+        <div 
+          ref={presetScrollRef}
+          className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 scroll-smooth"
+        >
           {profiles.map((p) => {
             const isActive = currentProfile.id === p.id;
             return (
               <div
                 key={p.id}
                 onClick={() => onSelectPreset(p)}
-                className={`px-3 py-2 rounded-xl border text-xs font-medium flex items-center gap-2.5 transition cursor-pointer ${
+                className={`px-3.5 py-2.5 rounded-xl border text-xs font-medium flex items-center gap-2.5 transition cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-500/20'
                     : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
@@ -230,7 +271,7 @@ export const BusinessProfileView: React.FC<BusinessProfileViewProps> = ({
               >
                 <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : 'bg-slate-400'}`}></div>
                 <div className="text-left">
-                  <span className="font-bold block truncate max-w-[170px] leading-tight">
+                  <span className="font-bold block truncate max-w-[180px] leading-tight">
                     {p.companyName}
                   </span>
                   <span className={`text-[10px] ${isActive ? 'text-blue-100' : 'text-slate-400'} font-mono`}>

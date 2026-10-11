@@ -635,17 +635,17 @@ function formatCurrency(val: number): string {
   return `$${low.toLocaleString()} - $${high.toLocaleString()}`;
 }
 
-// Generate the remaining 198 opportunities to make exactly 213 records
+// Generate extended opportunities to populate repository with 2,500+ rich records
 function generateExtendedOpportunities(): SAMOpportunity[] {
   const generated: SAMOpportunity[] = [];
-  const TOTAL_NEEDED = 213 - BASE_15.length; // 198 items
+  const TOTAL_NEEDED = 2500 - BASE_15.length; // 2485 generated items
   // Target breakdown:
-  // 133 Active (combined with 15 base = 148 active)
-  // 42 Inactive (closed/past deadline)
-  // 23 Awarded (concluded with awardee info)
-  const ACTIVE_TARGET = 133;
-  const INACTIVE_TARGET = 42;
-  const AWARDED_TARGET = 23;
+  // 1800 Active
+  // 500 Inactive (closed/past deadline)
+  // 185 Awarded (concluded with awardee info)
+  const ACTIVE_TARGET = 1800;
+  const INACTIVE_TARGET = 500;
+  const AWARDED_TARGET = 185;
 
   for (let i = 0; i < TOTAL_NEEDED; i++) {
     const idx = i + 1;
@@ -764,7 +764,7 @@ function generateExtendedOpportunities(): SAMOpportunity[] {
     const topic = DOMAIN_TOPICS[i % DOMAIN_TOPICS.length];
     const focus = PROGRAM_FOCUS_AREAS[i % PROGRAM_FOCUS_AREAS.length];
     const locQualifier = agency.state ? ` [${agency.city || agency.state}]` : '';
-    const title = `${agency.subTier}: ${topic} - ${focus}${locQualifier}`;
+    const title = `${topic} - ${focus}${locQualifier}`;
 
     const isRestrictedDefense = agency.department.includes('DEFENSE') || agency.department.includes('ARMY') || agency.department.includes('NAVY') || agency.department.includes('AIR FORCE') || agency.department.includes('DHA') || clearance === 'Top Secret';
     const oppAttachments = [

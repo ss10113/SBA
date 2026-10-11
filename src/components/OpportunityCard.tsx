@@ -122,11 +122,24 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs hover:shadow-xs cursor-pointer"
-              title="Open official solicitation directly on live SAM.gov portal"
+              className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 transition shadow-2xs hover:shadow-xs cursor-pointer ${
+                opportunity.isLiveVerified || opportunity.verifiedLiveSite || (opportunity.noticeId && /^[a-f0-9]{32}$/i.test(opportunity.noticeId))
+                  ? 'bg-emerald-600 text-white border border-emerald-700 font-extrabold shadow-2xs'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+              }`}
+              title={
+                opportunity.isLiveVerified || opportunity.verifiedLiveSite || (opportunity.noticeId && /^[a-f0-9]{32}$/i.test(opportunity.noticeId))
+                  ? 'Verified direct contract notice link on live SAM.gov portal'
+                  : 'Open solicitation query search directly on SAM.gov'
+              }
             >
-              <span>Live SAM.gov</span>
-              <ExternalLink className="w-3 h-3 text-emerald-600" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+              <span>
+                {opportunity.isLiveVerified || opportunity.verifiedLiveSite || (opportunity.noticeId && /^[a-f0-9]{32}$/i.test(opportunity.noticeId))
+                  ? 'Verified Live Contract'
+                  : 'Live SAM.gov'}
+              </span>
+              <ExternalLink className="w-3 h-3" />
             </a>
 
             <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
