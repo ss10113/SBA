@@ -392,7 +392,7 @@ export const FacetedFilterRail: React.FC<FacetedFilterRailProps> = ({
                 <optgroup key={sector.sectorCode} label={`Sector ${sector.sectorCode}: ${sector.sectorTitle}`}>
                   {sector.codes.map((n) => (
                     <option key={n.code} value={n.code}>
-                      {n.code} - {n.censusTitle}
+                      {n.code}
                     </option>
                   ))}
                 </optgroup>

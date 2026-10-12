@@ -83,7 +83,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
   }, [filters]);
 
   const handleAgencySelect = (agencyName: string) => {
-    setFilters((prev) => ({
+    setFilters((prev: FilterState) => ({
       ...prev,
       agencyFilter: prev.agencyFilter === agencyName ? 'All Federal Organizations' : agencyName,
     }));
@@ -99,7 +99,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm tracking-tight text-white">Filter & Refine Solicitations</h3>
+              <h3 className="font-bold text-sm tracking-tight text-white whitespace-nowrap">Filter & Refine Solicitations</h3>
               {activeCount > 0 && (
                 <span className="bg-blue-600 text-white font-mono font-bold px-2 py-0.5 rounded-full text-[11px] shadow-2xs">
                   {activeCount} active
@@ -159,7 +159,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
 
       {/* Expanded Horizontal Controls */}
       {isExpanded && (
-        <div className="p-4 sm:p-5 space-y-4 bg-slate-50/50">
+        <div className="p-3 sm:p-3.5 space-y-2.5 bg-slate-50/50">
           {/* Grid Row 1: Primary Horizontal Dropdowns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* 1. Keyword Search */}
@@ -168,7 +168,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
                 <span>Search / Title</span>
                 {filters.searchQuery && (
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))}
+                    onClick={() => setFilters((prev: FilterState) => ({ ...prev, searchQuery: '' }))}
                     className="text-slate-400 hover:text-slate-700 text-[10px]"
                   >
                     Clear
@@ -181,12 +181,12 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
                   type="text"
                   placeholder="Solicitation # or keywords..."
                   value={filters.searchQuery}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
-                  className="w-full pl-8 pr-7 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                  onChange={(e) => setFilters((prev: FilterState) => ({ ...prev, searchQuery: e.target.value }))}
+                  className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium"
                 />
                 {filters.searchQuery && (
                   <button
-                    onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))}
+                    onClick={() => setFilters((prev: FilterState) => ({ ...prev, searchQuery: '' }))}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -203,15 +203,15 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               </label>
               <select
                 value={filters.agencyFilter || 'All Federal Organizations'}
-                onChange={(e) => setFilters((prev) => ({ ...prev, agencyFilter: e.target.value }))}
-                className={`w-full px-2.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
+                onChange={(e) => setFilters((prev: FilterState) => ({ ...prev, agencyFilter: e.target.value }))}
+                className={`w-full px-2.5 py-1.5 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
                   filters.agencyFilter && filters.agencyFilter !== 'All Federal Organizations'
                     ? 'border-blue-500 text-blue-900 font-semibold bg-blue-50/50'
                     : 'border-slate-300 text-slate-800'
                 }`}
               >
                 <option value="All Federal Organizations">🏛️ All Organizations (115+ Orgs)</option>
-                {FEDERAL_ORGANIZATIONS.map((org) => (
+                {FEDERAL_ORGANIZATIONS.map((org: any) => (
                   <option key={org.name} value={org.name}>
                     {org.acronym ? `[${org.acronym}] ${org.name}` : org.name}
                   </option>
@@ -227,14 +227,14 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               </label>
               <select
                 value={filters.setAsideFilter || 'All Set-Asides'}
-                onChange={(e) => setFilters((prev) => ({ ...prev, setAsideFilter: e.target.value }))}
-                className={`w-full px-2.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
+                onChange={(e) => setFilters((prev: FilterState) => ({ ...prev, setAsideFilter: e.target.value }))}
+                className={`w-full px-2.5 py-1.5 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
                   filters.setAsideFilter && filters.setAsideFilter !== 'All Set-Asides'
                     ? 'border-emerald-500 text-emerald-900 font-semibold bg-emerald-50/50'
                     : 'border-slate-300 text-slate-800'
                 }`}
               >
-                {SET_ASIDE_OPTIONS.map((opt) => (
+                {SET_ASIDE_OPTIONS.map((opt: string) => (
                   <option key={opt} value={opt}>
                     {opt === 'All Set-Asides' ? '🏷️ All Set-Asides & Unrestricted' : opt}
                   </option>
@@ -250,17 +250,17 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               </label>
               <select
                 value={filters.naicsFilter || ''}
-                onChange={(e) => setFilters((prev) => ({ ...prev, naicsFilter: e.target.value }))}
-                className={`w-full px-2.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
+                onChange={(e) => setFilters((prev: FilterState) => ({ ...prev, naicsFilter: e.target.value }))}
+                className={`w-full px-2.5 py-1.5 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
                   filters.naicsFilter
                     ? 'border-indigo-500 text-indigo-900 font-semibold bg-indigo-50/50'
                     : 'border-slate-300 text-slate-800'
                 }`}
               >
                 <option value="">🎯 All NAICS Codes ({POPULAR_NAICS.length} Codes)</option>
-                {POPULAR_NAICS.map((naics) => (
+                {POPULAR_NAICS.map((naics: any) => (
                   <option key={naics.code} value={naics.code}>
-                    {naics.code} — {naics.title}
+                    {naics.code}
                   </option>
                 ))}
               </select>
@@ -274,8 +274,8 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               </label>
               <select
                 value={filters.stateFilter || 'all'}
-                onChange={(e) => setFilters((prev) => ({ ...prev, stateFilter: e.target.value, cityFilter: '' }))}
-                className={`w-full px-2.5 py-2 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
+                onChange={(e) => setFilters((prev: FilterState) => ({ ...prev, stateFilter: e.target.value, cityFilter: '' }))}
+                className={`w-full px-2.5 py-1.5 bg-white border rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer truncate ${
                   filters.stateFilter && filters.stateFilter !== 'all' && filters.stateFilter !== 'ALL_50_STATES' && filters.stateFilter !== 'ALL_TERRITORIES'
                     ? 'border-rose-500 text-rose-900 font-semibold bg-rose-50/50'
                     : 'border-slate-300 text-slate-800'
@@ -284,7 +284,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
                 <option value="all">🗺️ All States & Territories</option>
                 <option value="ALL_50_STATES">🇺🇸 All 50 U.S. States</option>
                 <option value="ALL_TERRITORIES">🏝️ All U.S. Territories</option>
-                {US_STATE_CODES.map((st) => (
+                {US_STATE_CODES.map((st: string) => (
                   <option key={st} value={st}>
                     {st} State Jurisdiction
                   </option>
@@ -299,7 +299,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-1">Quick Agency:</span>
               <button
-                onClick={() => setFilters((prev) => ({ ...prev, agencyFilter: 'All Federal Organizations' }))}
+                onClick={() => setFilters((prev: FilterState) => ({ ...prev, agencyFilter: 'All Federal Organizations' }))}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition cursor-pointer border ${
                   !filters.agencyFilter || filters.agencyFilter === 'All Federal Organizations'
                     ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
@@ -331,7 +331,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {/* Active Only Toggle */}
               <button
                 type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, statusFilter: prev.statusFilter === 'active' ? 'all' : 'active' }))}
+                onClick={() => setFilters((prev: FilterState) => ({ ...prev, statusFilter: prev.statusFilter === 'active' ? 'all' : 'active' }))}
                 className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                   filters.statusFilter === 'active'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
@@ -346,7 +346,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {/* Direct Link Verified Only */}
               <button
                 type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
+                onClick={() => setFilters((prev: FilterState) => ({ ...prev, verifiedOnly: !prev.verifiedOnly }))}
                 className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                   filters.verifiedOnly
                     ? 'bg-blue-50 text-blue-800 border-blue-300'
@@ -362,7 +362,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               <div className="flex items-center bg-white border border-slate-300 rounded-lg p-0.5 text-[11px]">
                 <span className="px-2 text-slate-500 font-bold">Fit Score:</span>
                 <button
-                  onClick={() => setFilters((prev) => ({ ...prev, minFitScore: 0 }))}
+                  onClick={() => setFilters((prev: FilterState) => ({ ...prev, minFitScore: 0 }))}
                   className={`px-2 py-0.5 rounded font-semibold transition cursor-pointer ${
                     filters.minFitScore === 0 ? 'bg-slate-800 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -370,7 +370,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
                   All
                 </button>
                 <button
-                  onClick={() => setFilters((prev) => ({ ...prev, minFitScore: 60 }))}
+                  onClick={() => setFilters((prev: FilterState) => ({ ...prev, minFitScore: 60 }))}
                   className={`px-2 py-0.5 rounded font-semibold transition cursor-pointer ${
                     filters.minFitScore === 60 ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -378,7 +378,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
                   60%+
                 </button>
                 <button
-                  onClick={() => setFilters((prev) => ({ ...prev, minFitScore: 80 }))}
+                  onClick={() => setFilters((prev: FilterState) => ({ ...prev, minFitScore: 80 }))}
                   className={`px-2 py-0.5 rounded font-semibold transition cursor-pointer ${
                     filters.minFitScore === 80 ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-slate-900'
                   }`}
@@ -397,7 +397,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.searchQuery && (
                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 border border-blue-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Search: <strong>"{filters.searchQuery}"</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))} className="hover:text-blue-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, searchQuery: '' }))} className="hover:text-blue-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -406,7 +406,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.agencyFilter && filters.agencyFilter !== 'All Federal Organizations' && (
                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 border border-blue-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Agency: <strong>{filters.agencyFilter}</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, agencyFilter: 'All Federal Organizations' }))} className="hover:text-blue-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, agencyFilter: 'All Federal Organizations' }))} className="hover:text-blue-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -415,7 +415,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.setAsideFilter && filters.setAsideFilter !== 'All Set-Asides' && (
                 <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Set-Aside: <strong>{filters.setAsideFilter}</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, setAsideFilter: 'All Set-Asides' }))} className="hover:text-emerald-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, setAsideFilter: 'All Set-Asides' }))} className="hover:text-emerald-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -424,7 +424,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.naicsFilter && (
                 <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-900 border border-indigo-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>NAICS: <strong>{filters.naicsFilter}</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, naicsFilter: '' }))} className="hover:text-indigo-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, naicsFilter: '' }))} className="hover:text-indigo-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -433,7 +433,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.stateFilter && filters.stateFilter !== 'all' && filters.stateFilter !== 'ALL_50_STATES' && filters.stateFilter !== 'ALL_TERRITORIES' && (
                 <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-900 border border-rose-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Location: <strong>{filters.stateFilter}</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, stateFilter: 'all', cityFilter: '' }))} className="hover:text-rose-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, stateFilter: 'all', cityFilter: '' }))} className="hover:text-rose-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -442,7 +442,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.minFitScore > 0 && (
                 <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Min Fit: <strong>{filters.minFitScore}%+</strong></span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, minFitScore: 0 }))} className="hover:text-emerald-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, minFitScore: 0 }))} className="hover:text-emerald-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -451,7 +451,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.statusFilter === 'active' && (
                 <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Active Solicitations Only</span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, statusFilter: 'all' }))} className="hover:text-emerald-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, statusFilter: 'all' }))} className="hover:text-emerald-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -460,7 +460,7 @@ export const HorizontalFilterPanel: React.FC<HorizontalFilterPanelProps> = ({
               {filters.verifiedOnly && (
                 <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 border border-blue-300 px-2.5 py-0.5 rounded-full font-medium">
                   <span>Direct Notice Links Only</span>
-                  <button onClick={() => setFilters((prev) => ({ ...prev, verifiedOnly: false }))} className="hover:text-blue-700 cursor-pointer">
+                  <button onClick={() => setFilters((prev: FilterState) => ({ ...prev, verifiedOnly: false }))} className="hover:text-blue-700 cursor-pointer">
                     <X className="w-3 h-3" />
                   </button>
                 </span>

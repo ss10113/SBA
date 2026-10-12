@@ -69,6 +69,8 @@ import { LaborRatesMatrixView } from './components/LaborRatesMatrixView';
 import { SamValidationModal } from './components/SamValidationModal';
 import { AiConfigModal } from './components/AiConfigModal';
 import { GsaApiKeyModal } from './components/GsaApiKeyModal';
+import { LiveSyncManagerModal } from './components/LiveSyncManagerModal';
+import { useAuth } from './context/AuthContext';
 
 const DEFAULT_FILTERS: FilterState = {
   searchQuery: '',
@@ -304,6 +306,8 @@ function sanitizeOpportunity(opp: any): SAMOpportunity {
 }
 
 export default function App() {
+  const { persistOpportunitiesToSync, cachedOpps } = useAuth();
+  const [isSyncManagerOpen, setIsSyncManagerOpen] = useState(false);
   // Navigation State
   const [activeTab, setActiveTab] = useState<'canvass' | 'strategy' | 'profile' | 'pipeline' | 'insights' | 'labor_rates'>('canvass');
 
@@ -517,6 +521,7 @@ export default function App() {
           return { ...s, noticeId: uniqueId };
         });
         setOpportunities(sanitized);
+        persistOpportunitiesToSync(sanitized, Boolean(data.source && data.source.includes('sam-' )) ? 'SAM.gov Live API' : 'SBA Curated Feed');
 
         const count = sanitized.length;
         const total = data.totalRecords !== undefined ? data.totalRecords : (data.total !== undefined ? data.total : count);
@@ -545,10 +550,18 @@ export default function App() {
       }
     } catch (e: any) {
       console.error('Error syncing opportunities from SAM API proxy:', e);
-      setSyncToast({
-        message: `Sync warning: ${e.message || 'Unable to connect to SAM proxy'}. Retaining active solicitations.`,
-        type: 'error',
-      });
+      if (cachedOpps && cachedOpps.length > 0) {
+        setOpportunities(cachedOpps);
+        setSyncToast({
+          message: `Notice: Loaded ${cachedOpps.length} contract solicitations from Firestore live site sync cache (SAM.gov rate limit protection active).`,
+          type: 'info',
+        });
+      } else {
+        setSyncToast({
+          message: `Sync warning: ${e.message || 'Unable to connect to SAM proxy'}. Retaining active solicitations.`,
+          type: 'error',
+        });
+      }
     } finally {
       setIsSyncing(false);
       setTimeout(() => setSyncToast(null), 6000);
@@ -1094,7 +1107,8 @@ export default function App() {
         onOpenValidationModal={() => handleOpenValidation()}
         onOpenAiConfig={() => setIsAiConfigOpen(true)}
         onOpenGsaApiKeyModal={() => setIsGsaApiKeyModalOpen(true)}
-        aiConfigStatus={aiConfigStatus}
+        aiConfigStatus={aiConfigStatus ? { hasKey: aiConfigStatus.hasKey, providerName: aiConfigStatus.provider || "Gemini" } : undefined}
+        onOpenSyncManager={() => setIsSyncManagerOpen(true)}
       />
 
       {/* Main Container */}
@@ -1486,6 +1500,17 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <LiveSyncManagerModal
+        isOpen={isSyncManagerOpen}
+        onClose={() => setIsSyncManagerOpen(false)}
+        onLoadCachedOppsIntoFeed={(cached) => {
+          setOpportunities(cached);
+          setSyncToast({
+            message: `Loaded ${cached.length} cached contract solicitations from Firestore live sync storage.`,
+            type: 'info',
+          });
+        }}
+      />
     </div>
   );
 }

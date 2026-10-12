@@ -211,14 +211,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <option value="">🏢 All NAICS Industry Codes</option>
             {primaryNaics && (
               <option value={primaryNaics}>
-                ⭐ Your Primary: {primaryNaics} - {getNaicsDefinition(primaryNaics).censusTitle}
+                ⭐ Primary: {primaryNaics}
               </option>
             )}
             {NAICS_BY_SECTOR.map((sector) => (
               <optgroup key={sector.sectorCode} label={`Sector ${sector.sectorCode}: ${sector.sectorTitle}`}>
                 {sector.codes.map((n) => (
                   <option key={n.code} value={n.code}>
-                    {n.code} - {n.censusTitle}{n.code === '541512' ? ' (Commercial & Gov)' : ''}
+                    {n.code}
                   </option>
                 ))}
               </optgroup>
@@ -587,7 +587,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           {filters.naicsFilter && (
             <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-mono">
-              NAICS: <strong className="font-semibold">{filters.naicsFilter}</strong> ({getNaicsDefinition(filters.naicsFilter).censusTitle})
+              NAICS: <strong className="font-semibold">{filters.naicsFilter}</strong>
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, naicsFilter: '' }))}
                 className="hover:text-blue-900 cursor-pointer ml-0.5"

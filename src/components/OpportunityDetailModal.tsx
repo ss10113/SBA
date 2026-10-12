@@ -644,37 +644,24 @@ ${(opportunity.scopeBullets || []).map((b, i) => `  ${i + 1}. ${b}`).join('\n')}
           </div>
 
           {/* Key Procurement Details Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 bg-white rounded-lg border border-slate-200">
-              <span className="text-slate-500 font-medium block">Estimated Ceiling</span>
-              <span className="font-bold text-slate-900 text-sm">{opportunity.estimatedValue}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+            <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <span className="text-slate-500 font-medium block text-[11px]">Estimated Ceiling</span>
+              <span className="font-bold text-slate-900 text-sm mt-0.5">{opportunity.estimatedValue}</span>
             </div>
-            <div className="p-3 bg-white rounded-lg border border-slate-200">
-              <span className="text-slate-500 font-medium block">Response Due Date</span>
-              <span className="font-bold text-red-600 text-sm">
+            <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <span className="text-slate-500 font-medium block text-[11px]">Response Due Date</span>
+              <span className="font-bold text-red-600 text-sm mt-0.5">
                 {new Date(opportunity.responseDeadLine).toLocaleDateString()}
               </span>
             </div>
-            <div className="p-3 bg-white rounded-lg border border-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium block">NAICS Code</span>
-                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
-                  SBA.gov
-                </span>
-              </div>
-              <span className="font-bold font-mono text-slate-900 text-sm">{opportunity.naicsCode}</span>
-              <span className="text-[10px] text-slate-800 font-semibold truncate block" title={getNaicsDefinition(opportunity.naicsCode).sbaTitle}>
-                {getNaicsDefinition(opportunity.naicsCode).sbaTitle}
-              </span>
-              {getNaicsDefinition(opportunity.naicsCode).censusTitle !== getNaicsDefinition(opportunity.naicsCode).sbaTitle && (
-                <span className="text-[9px] text-slate-400 truncate block">
-                  Census: {getNaicsDefinition(opportunity.naicsCode).censusTitle}
-                </span>
-              )}
+            <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <span className="text-slate-500 font-medium block text-[11px]">NAICS Code</span>
+              <span className="font-bold font-mono text-slate-900 text-sm mt-0.5">{opportunity.naicsCode}</span>
             </div>
-            <div className="p-3 bg-white rounded-lg border border-slate-200">
-              <span className="text-slate-500 font-medium block">Clearance Required</span>
-              <span className="font-bold text-slate-900 text-sm">{opportunity.requiredClearance}</span>
+            <div className="p-2.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <span className="text-slate-500 font-medium block text-[11px]">Clearance Required</span>
+              <span className="font-bold text-slate-900 text-sm mt-0.5">{opportunity.requiredClearance}</span>
             </div>
           </div>
 

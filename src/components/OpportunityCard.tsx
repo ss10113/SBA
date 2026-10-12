@@ -159,7 +159,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
 
           <h3 
             onClick={() => onInspect(opportunity)}
-            className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-700 transition cursor-pointer line-clamp-2 leading-snug"
+            className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-700 transition cursor-pointer w-full whitespace-nowrap overflow-hidden text-ellipsis block leading-snug" title={opportunity.title}
           >
             {opportunity.title}
           </h3>

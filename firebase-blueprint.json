@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and authentication preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "companyName": { "type": "string", "maxLength": 128 },
+        "samApiKey": { "type": "string", "maxLength": 256 },
+        "gsaApiKey": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "SyncedOpportunity": {
+      "title": "SyncedOpportunity",
+      "description": "Cached live SAM.gov / government portal contract opportunity to prevent API limit exhaustion",
+      "type": "object",
+      "properties": {
+        "noticeId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 512 },
+        "solicitationNumber": { "type": "string", "maxLength": 128 },
+        "agency": { "type": "string", "maxLength": 256 },
+        "postedDate": { "type": "string", "maxLength": 64 },
+        "responseDeadline": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "maxLength": 128 },
+        "setAside": { "type": "string", "maxLength": 128 },
+        "naicsCode": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 10000 },
+        "department": { "type": "string", "maxLength": 256 },
+        "placeOfPerformance": { "type": "string", "maxLength": 256 },
+        "syncedAt": { "type": "string" },
+        "syncedBy": { "type": "string", "maxLength": 128 },
+        "source": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["noticeId", "title", "syncedAt"]
+    },
+    "PipelineItem": {
+      "title": "PipelineItem",
+      "description": "User tracked government contract opportunity in pipeline",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "noticeId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 512 },
+        "agency": { "type": "string", "maxLength": 256 },
+        "solicitationNumber": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["review", "bid", "no-bid", "proposal_in_progress", "submitted", "awarded"] },
+        "winScore": { "type": "number" },
+        "estimatedValue": { "type": "string", "maxLength": 128 },
+        "targetSubmissionDate": { "type": "string", "maxLength": 64 },
+        "captureNotes": { "type": "string", "maxLength": 5000 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["noticeId", "userId", "status"]
+    },
+    "ProposalRevision": {
+      "title": "ProposalRevision",
+      "description": "Proposal revision management artifact document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "proposalId": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "version": { "type": "number" },
+        "section": { "type": "string", "maxLength": 128 },
+        "content": { "type": "string", "maxLength": 20000 },
+        "shipleyArtifacts": { "type": "string", "maxLength": 20000 },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["proposalId", "authorId", "version", "content"]
+    },
+    "MarketIntelReport": {
+      "title": "MarketIntelReport",
+      "description": "Market intelligence & agency contacts query cache",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "queryKey": { "type": "string", "maxLength": 256 },
+        "category": { "type": "string", "maxLength": 128 },
+        "reportData": { "type": "string", "maxLength": 20000 },
+        "syncedAt": { "type": "string" },
+        "syncedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["queryKey", "category", "syncedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles and configuration"
+    },
+    "/syncedOpportunities/{opportunityId}": {
+      "schema": { "$ref": "#/entities/SyncedOpportunity" },
+      "description": "Live site sync data to prevent exceeding SAM.gov API limits"
+    },
+    "/pipeline/{pipelineId}": {
+      "schema": { "$ref": "#/entities/PipelineItem" },
+      "description": "User tracked pipeline opportunities"
+    },
+    "/proposalRevisions/{revisionId}": {
+      "schema": { "$ref": "#/entities/ProposalRevision" },
+      "description": "Proposal revisions and artifacts"
+    },
+    "/marketIntelReports/{reportId}": {
+      "schema": { "$ref": "#/entities/MarketIntelReport" },
+      "description": "Cached market intelligence and agency search data"
+    }
+  }
+}
